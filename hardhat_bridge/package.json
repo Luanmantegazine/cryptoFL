@@ -1,0 +1,18 @@
+{
+  "name": "hardhat-bridge",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "build": "hardhat compile",
+    "updateGlobalModel": "hardhat run scripts/updateGlobalModel.ts",
+    "sendUpdate": "hardhat run scripts/sendUpdate.ts"
+  },
+  "devDependencies": {
+    "@nomicfoundation/hardhat-toolbox": "^4.0.0",
+    "dotenv": "^16.4.1",
+    "ethers": "^6.10.0",
+    "hardhat": "^2.22.6",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.6.2"
+  }
+}
