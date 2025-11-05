@@ -9,7 +9,7 @@ contract Trainer {
     string[] public      tags;          // Lista de tags do treinador.
     int      public      rating;                     //TODO: sum(evaluations[])/count(evaluations) 
     DataTypes.Evaluation[]  public  evaluations;    // List of received evaluation
-    DataTypes.Specification public  specification;  // Specifications of the trainer.
+    DataTypes.Specification public  specification; // Specifications of the trainer.
     string publick dataPreviewCID;
    
     uint256[] internal pendingOffersIDs;      
