@@ -1,6 +1,6 @@
 import json
 import os
-from typing import Any, Dict
+import json, os
 
 from dotenv import load_dotenv
 from web3 import Web3
@@ -30,6 +30,7 @@ DAO_ADDRESS = resolve_address(
     deployments_dir=DEPLOYMENTS_DIR,
     ignition_dir=IGNITION_DIR,
 )
+
 
 
 def _load_abi(path: str):
