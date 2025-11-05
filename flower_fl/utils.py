@@ -2,7 +2,6 @@ import os, numpy as np
 from dotenv import load_dotenv
 load_dotenv()
 
-JOB_ID = int(os.getenv("JOB_ID", "1"))
 ROUNDS = int(os.getenv("ROUNDS", "3"))
 
 def init_weights() -> list[np.ndarray]:
