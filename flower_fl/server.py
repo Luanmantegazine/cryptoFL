@@ -2,9 +2,12 @@ import os
 import flwr as fl
 from onchain_job import job_update_global
 from ipfs import ipfs_add_numpy
-from utils import JOB_ID, ROUNDS, init_weights
+from utils import ROUNDS, init_weights
 
 JOB_ADDRS = [x.strip() for x in os.getenv("JOB_ADDRS", "").split(",") if x.strip()]
+
+if not JOB_ADDRS:
+    raise RuntimeError("Configure JOB_ADDRS com pelo menos um endereço de JobContract")
 
 
 class Strategy(fl.server.strategy.FedAvg):
@@ -16,7 +19,10 @@ class Strategy(fl.server.strategy.FedAvg):
             print(f"[JOB {addr}] UpdateGlobalModel r0 tx={r['hash']} gas={r['gasETH']:.8f} ETH")
 
     def configure_fit(self, rnd, params, client_manager):
-        return super().configure_fit(rnd, params, client_manager)
+        instructions = super().configure_fit(rnd, params, client_manager)
+        for _, fit_ins in instructions:
+            fit_ins.config.setdefault("cid_global", self.latest_cid)
+        return instructions
 
     def aggregate_fit(self, rnd, results, failures):
         agg, _ = super().aggregate_fit(rnd, results, failures)
