@@ -14,9 +14,19 @@ async function main() {
     throw new Error("Nenhuma carteira configurada. Defina PRIVATE_KEY na rede escolhida.");
   }
 
-  console.log("Deploying DAO with account:", wallet.account.address);
+  // 1. Deploy da biblioteca DataTypes (Corrigido com nome qualificado)
+  console.log("Deploying library DataTypes...");
+  const dataTypesLib = await viem.deployContract("contracts/DataTypes.sol:DataTypes");
+  console.log("DataTypes library deployed at:", dataTypesLib.address);
 
-  const txHash = await viem.deployContract("DAO", []);
+  // 2. Deploy do DAO (Corrigido com nome qualificado)
+  console.log("Deploying DAO with account:", wallet.account.address);
+  const txHash = await viem.deployContract("contracts/DAO.sol:DAO", [], {
+    libraries: {
+      "project/contracts/DataTypes.sol:DataTypes": dataTypesLib.address,
+    }
+  });
+
   console.log("Awaiting deployment tx:", txHash);
 
   const receipt = await publicClient.waitForTransactionReceipt({ hash: txHash });
@@ -31,6 +41,7 @@ async function main() {
   console.log("Chain id:", chain);
 
   const outDir = resolve("deployments");
+  // CORREÇÃO: "outDir" (minúsculo) e não "OutDir"
   mkdirSync(outDir, { recursive: true });
   const filePath = join(outDir, `dao-${chain}.json`);
 
@@ -41,6 +52,9 @@ async function main() {
     deployer: wallet.account.address,
     transactionHash: txHash,
     timestamp: new Date().toISOString(),
+    libraries: {
+      DataTypes: dataTypesLib.address,
+    }
   };
 
   writeFileSync(filePath, JSON.stringify(payload, null, 2), { encoding: "utf-8" });
@@ -51,4 +65,3 @@ main().catch((err) => {
   console.error(err);
   process.exitCode = 1;
 });
-

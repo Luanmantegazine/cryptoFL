@@ -1,36 +1,35 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.20;
 import "@openzeppelin/contracts/utils/Counters.sol";
-import "hardhat/console.sol";
+// import "hardhat/console.sol"; // Removido
 import "./DataTypes.sol";
 import "./JobContract.sol";
 
 contract Trainer {
-    string   public      description;   // Descrição texto livre do treinador
-    string[] public      tags;          // Lista de tags do treinador.
-    int      public      rating;                     //TODO: sum(evaluations[])/count(evaluations) 
-    DataTypes.Evaluation[]  public  evaluations;    // List of received evaluation
-    DataTypes.Specification public  specification; // Specifications of the trainer.
+    string   public      description;
+    string[] public      tags;
+    int      public      rating;
+    DataTypes.Evaluation[]  public  evaluations;
+    DataTypes.Specification public  specification;
     string public dataPreviewCID;
-   
-    uint256[] internal pendingOffersIDs;      
-    mapping(uint256 => DataTypes.Offer) private pendingOffers; //<offerID, Offer> Ofertas de trabalho que o treinador tem.
+
+    uint256[] internal pendingOffersIDs;
+    mapping(uint256 => DataTypes.Offer) private pendingOffers;
 
     address[] internal jobsAddress;
-    mapping(address => JobContract) private jobContracts;       // Trabalhos atuais do treinador
-    
-    address public owner;                           // Endereço da carteira do Trainer
-    address public DAO;                      // DAO é o endereço do contrato que faz o gerenciamento da DAO
-    
+    mapping(address => JobContract) private jobContracts;
+
+    address public owner;
+    address public DAO;
+
     constructor(address ownerAddress, string memory _description, DataTypes.Specification memory _specification) {
         DAO    = msg.sender;
         owner         = ownerAddress;
         description   = _description;
         specification = _specification;
-        rating        = 10; //Todos treinadores começam com nota maxima
-
-        console.log("Trainer: DAO =", DAO, "Owner=", owner);
-    }    
+        rating        = 10;
+        // console.log("Trainer: DAO =", DAO, "Owner=", owner); // Removido
+    }
 
     modifier onlyOwner {
       require(msg.sender == owner,  "Only owner");
@@ -51,42 +50,33 @@ contract Trainer {
     }
 
     function newOffer(DataTypes.Offer memory offer) external onlyDAO {
-        console.log("newOffer: from", offer.offerMaker);
-
-        Log.Offer(offer);
+        // console.log("newOffer: from", offer.offerMaker); // Removido
+        // Log.Offer(offer); // Removido
         insertOffer(offer);
-
-        console.log("Trainer: DAO =", DAO, "Owner=", owner);
+        // console.log("Trainer: DAO =", DAO, "Owner=", owner); // Removido
     }
 
     function newContract(JobContract job) external onlyDAO {
-        console.log("newContract: ", owner);
-        
-        job.LogContract();
+        // console.log("newContract: ", owner); // Removido
+        // job.LogContract(); // Removido
         insertContract(job);
     }
 
     function acceptOffer(uint256 offerID) external onlyDAO returns(DataTypes.Offer memory) {
         DataTypes.Offer memory offer;
-
         if(containsOffer(offerID)){
             offer = pendingOffers[offerID];
             deleteOffer(offerID);
         }
-
         return offer;
     }
 
     function getPendingOffers() external view onlyDAO returns(DataTypes.Offer [] memory) {
-
         DataTypes.Offer [] memory listPendingOffers = new DataTypes.Offer[](pendingOffersIDs.length);
-
         for (uint256 i = 0; i < pendingOffersIDs.length; i++) {
             DataTypes.Offer memory pendingOffer = pendingOffers[pendingOffersIDs[i]];
-
-            listPendingOffers[i] = pendingOffer;            
+            listPendingOffers[i] = pendingOffer;
         }
-
         return listPendingOffers;
     }
 
@@ -102,21 +92,18 @@ contract Trainer {
     function insertOffer(DataTypes.Offer memory offer) internal {
         pendingOffers[offer.ID] = offer;
         pendingOffersIDs.push(offer.ID);
-
-        console.log("insertOffer:" , offer.ID, " Count pending offers =", pendingOffersIDs.length);
+        // console.log("insertOffer:" , offer.ID, " Count pending offers =", pendingOffersIDs.length); // Removido
     }
 
     function insertContract(JobContract job) internal {
         jobContracts[address(job)] = job;
         jobsAddress.push(address(job));
-
-        console.log("insertContract:" ,address(job), " Count jobContracts =", jobsAddress.length);
+        // console.log("insertContract:" ,address(job), " Count jobContracts =", jobsAddress.length); // Removido
     }
 
     function deleteOffer(uint256 offerID) internal {
         uint256 idxOffer = 0;
         bool    bFound   = false;
-        //acha o index que a oferta está
         while ((idxOffer < pendingOffersIDs.length) && (!bFound)){
             if (pendingOffersIDs[idxOffer] == offerID) {
                 bFound = true;
@@ -125,20 +112,14 @@ contract Trainer {
             idxOffer++;
         }
 
-        //Deleta
         if (bFound) {
-            //Deleta a oferta da lista de IDs pendentes. Faz isso atribuindo no valor da ultima oferta no lugar da oferta a ser deletada, e então fazendo um pop do ultimo elemento.
             pendingOffersIDs[idxOffer] = pendingOffersIDs[pendingOffersIDs.length-1];
             pendingOffersIDs.pop();
-
-
-            //Deleta a oferta do mapping
             delete pendingOffers[offerID];
-
-            console.log("deleteOffer:" , offerID, idxOffer, pendingOffersIDs.length);
+            // console.log("deleteOffer:" , offerID, idxOffer, pendingOffersIDs.length); // Removido
         }
-        else {
-            console.log("deleteOffer:" , offerID, "Not found");
-        }
+        // else {
+            // console.log("deleteOffer:" , offerID, "Not found"); // Removido
+        // }
     }
 }

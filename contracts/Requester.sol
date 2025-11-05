@@ -2,22 +2,21 @@
 pragma solidity ^0.8.20;
 
 import "@openzeppelin/contracts/utils/Counters.sol";
-import "hardhat/console.sol";
+// import "hardhat/console.sol"; // Removido
 
 import "./DataTypes.sol";
 import "./JobContract.sol";
 
 contract Requester {
-    address public owner;                           // Endereço da carteira do Trainer
-    address public DAOManager;                      // Manager é o endereço do contrato que faz o gerenciamento da DAO
-    DataTypes.Evaluation[]  public  evaluations;    // List of received evaluation
+    address public owner;
+    address public DAOManager;
+    DataTypes.Evaluation[]  public  evaluations;
 
-
-    uint256[] internal pendingOffersIDs;      
-    mapping(uint256 => DataTypes.Offer) private pendingOffers; //<offerID, Offer> Ofertas de trabalho que estão aguardando resposta.
+    uint256[] internal pendingOffersIDs;
+    mapping(uint256 => DataTypes.Offer) private pendingOffers;
 
     address[] internal jobsAddress;
-    mapping(address => JobContract) private jobContracts;   // Contratos de trabalho 
+    mapping(address => JobContract) private jobContracts;
 
     modifier onlyOwner {
       require(msg.sender == owner,  "Only owner");
@@ -27,27 +26,23 @@ contract Requester {
     modifier onlyDAO {
       require(msg.sender == DAOManager, "Only DAO");
       _;
-    }   
+    }
 
     constructor(address ownerAddress) {
         DAOManager    = msg.sender;
         owner         = ownerAddress;
-        
-        console.log("Requester: DAO =", DAOManager, "Owner=", owner);
+        // console.log("Requester: DAO =", DAOManager, "Owner=", owner); // Removido
     }
 
     function newContract(JobContract newJobContract) external onlyDAO {
-        console.log("newContract: ", owner);
-        
-        newJobContract.LogContract();
+        // console.log("newContract: ", owner); // Removido
+        // newJobContract.LogContract(); // Removido
         insertContract(newJobContract);
     }
 
     function insertContract(JobContract newJobContract) internal {
         jobContracts[address(newJobContract)] = newJobContract;
         jobsAddress.push(address(newJobContract));
-
-        console.log("insertContract:" ,address(newJobContract), " Count jobContracts =", jobsAddress.length);
+        // console.log("insertContract:" ,address(newJobContract), " Count jobContracts =", jobsAddress.length); // Removido
     }
-
 }
