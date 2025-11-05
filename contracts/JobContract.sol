@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.20;
 
-import "hardhat/console.sol";
+// import "hardhat/console.sol"; // Removido
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 
 import "./DataTypes.sol";
@@ -20,7 +20,6 @@ contract JobContract is ReentrancyGuard {
     bytes32 public latestModelHash;
 
     DataTypes.Status public Status;
-
     address public offerMaker;
     address public trainer;
     address public DAOManager;
@@ -70,22 +69,12 @@ contract JobContract is ReentrancyGuard {
         availableAmount = 0;
         withdrawAmount = 0;
         Status = DataTypes.Status.WaitingSignatures;
-
-        console.log("JobContract : Trainer = ", trainer, offerMaker);
+        // console.log("JobContract : Trainer = ", trainer, offerMaker); // Removido
     }
 
-    function LogContract() public view {
-        console.log("JobContract: Decription =", description);
-        console.log("JobContract: InitialModelHash =", initialModelHash);
-        console.log("JobContract: ValueByUpdate =", valueByUpdate);
-        console.log("JobContract: numberOfUpdates =", numberOfUpdates);
-        console.log("JobContract: updatesDone =", updatesDone);
-        console.log("JobContract: lockedAmount =", lockedAmount);
-        console.log("JobContract: availableAmount =", availableAmount);
-        console.log("JobContract: OfferMaker =", offerMaker);
-        console.log("JobContract: trainer =", trainer);
-        console.log("JobContract: Status =", DataTypes.StatusToStr(Status));
-    }
+    // function LogContract() public view { // Removido
+        // ...
+    // }
 
     function totalAmount() public view returns (uint256) {
         return (valueByUpdate * numberOfUpdates);
@@ -106,7 +95,6 @@ contract JobContract is ReentrancyGuard {
         updatesDone += 1;
         availableAmount += valueByUpdate;
         withdrawAmount += valueByUpdate;
-
         if (updatesDone == numberOfUpdates) {
             Status = DataTypes.Status.Fulfilled;
         }
@@ -133,21 +121,17 @@ contract JobContract is ReentrancyGuard {
 
         (bool ok, ) = recipient.call{value: amount}("");
         require(ok, "Transfer failed");
-
         emit PayoutReleased(recipient, amount);
         return amount;
     }
 
     function sign(address signer) public onlyDAO {
-        console.log("sign: Signer =", signer, trainer, offerMaker);
-
+        // console.log("sign: Signer =", signer, trainer, offerMaker); // Removido
         require(
             (Status != DataTypes.Status.Signed), "JobContract already signed"
             );
-
         bool bIsTrainer    = (signer == trainer);
         bool bIsOfferMaker = (signer == offerMaker);
-
         if (bIsTrainer) {
             if (Status == DataTypes.Status.WaitingSignatures) {
                 Status = DataTypes.Status.WaitingRequesterSignature;

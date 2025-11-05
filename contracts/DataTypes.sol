@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.20;
-import "hardhat/console.sol";
+// import "hardhat/console.sol"; // REMOVIDO
 
 library DataTypes {
     enum Status { None,
@@ -41,7 +41,7 @@ library DataTypes {
     struct Specification {
         string processor;
         string ram;
-        string cpu;        
+        string cpu;
     }
 
     struct Offer {
@@ -54,37 +54,15 @@ library DataTypes {
         uint256 numberOfUpdates;
         address offerMaker;
         address trainer;
-        //Talvez adicionar algum tipo de prazo limit de aceitação.
     }
-    
+
     struct JobRequirements {
         string description;
-        uint256 valueByUpdate;   //Valor maximo que o Requisitante está disposto a pagar por update
-        uint256 minRating;          //Rating minimo que um candidato deve ter
-        string[] tags;          //Tags que devem estar inclusas nas tags dos candidatos
-        uint256 canditatesToReturn; //Numero maximo de candindatos a serem retornados. Que serão selecionados manualmente.
+        uint256 valueByUpdate;
+        uint256 minRating;
+        string[] tags;
+        uint256 canditatesToReturn;
     }
 }
 
-library Log {
-    // FUNÇÕES AUXILIARES
-    function Requirement(DataTypes.JobRequirements memory Requirements) view internal {
-        console.log("Description =", Requirements.description);
-        console.log("CandidatesToReturn =", Requirements.canditatesToReturn);
-        console.log("ValueByUpdate =", Requirements.valueByUpdate);
-        console.log("MinRating =", Requirements.minRating);
-        
-        for (uint i=0; i < Requirements.tags.length; i++) {
-            console.log("Tag =", Requirements.tags[i], i);
-        }
-    }
-
-    function Offer(DataTypes.Offer memory offer) public view {
-        console.log("ID =", offer.ID);
-        console.log("Decription =", offer.description);
-        console.log("ModelCIDHash =", offer.modelCIDHash);
-        console.log("ValueByUpdate =", offer.valueByUpdate);
-        console.log("numberOfUpdates =", offer.numberOfUpdates);
-        console.log("OfferMaker =", offer.offerMaker);
-    }
-}
+// library Log REMOVIDA
