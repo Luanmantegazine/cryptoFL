@@ -3,6 +3,7 @@ import "./DataTypes.sol";
 contract JobContract {
     string description;
     string modelCID;
+    string serverEndpoint;
     uint256 valueByUpdate;
     uint256 numberOfUpdates;
     uint256 updatesDone;
@@ -22,6 +23,10 @@ contract JobContract {
       _;
     }
 
+    modifier onlyDAOOrOfferMaker {
+        require(msg.sender == DAOManager || msg.sender == offerMaker, "Only DAO or OfferMaker");
+    }
+
     constructor(DataTypes.Offer memory offer) {
         DAOManager      = msg.sender;
         offerMaker      = offer.offerMaker;
@@ -29,6 +34,7 @@ contract JobContract {
         description     = offer.description;
         valueByUpdate   = offer.valueByUpdate;
         numberOfUpdates = offer.numberOfUpdates;
+        serverEndpoint  = offer.serverEndpoint;
         updatesDone     = 0;
         lockedAmount    = 0;
         availableAmount = 0;
@@ -60,7 +66,7 @@ contract JobContract {
         console.log("lockAmount =", lockedAmount);    
     }
 
-    function newUpdate() public onlyDAO {
+    function newUpdate() public onlyDAOOrOfferMaker {
         updatesDone = updatesDone +1;
         availableAmount = availableAmount + valueByUpdate;
 
@@ -114,5 +120,9 @@ contract JobContract {
 
     function offerMakerAddr() public view returns (address){
         return offerMaker;
+    }
+
+    function getServerEndpoint() public view returns (string memory){
+        return serverEndpoint;
     }
 }

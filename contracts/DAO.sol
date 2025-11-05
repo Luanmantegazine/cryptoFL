@@ -102,7 +102,7 @@ contract DAO {
         return true;
     }
 
-    function MakeOffer(string memory description, string memory modelCID, uint256 valueByUpdate, uint256 numberOfUpdates, address trainerAddr) external {
+    function MakeOffer(string memory description, string memory modelCID, uint256 valueByUpdate, uint256 numberOfUpdates, address trainerAddr, string memory serverEndpoint) external {
         require(
             isRequester(msg.sender), "Requester not registered"
         );
@@ -120,7 +120,8 @@ contract DAO {
         offer.valueByUpdate   = valueByUpdate;
         offer.numberOfUpdates = numberOfUpdates;       
         offer.offerMaker      = msg.sender;
-        offer.trainer         = trainerAddr;        
+        offer.trainer         = trainerAddr;
+        offer.serverEndpoint  = serverEndpoint;
 
         Log.Offer(offer);
         trainer.newOffer(offer);
