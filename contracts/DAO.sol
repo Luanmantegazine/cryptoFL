@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: UNLICENSED
+pragma solidity ^0.8.0;
 import "@openzeppelin/contracts/utils/Counters.sol";
 import "@openzeppelin/contracts/utils/structs/EnumerableMap.sol";
 import "hardhat/console.sol";
@@ -7,6 +9,7 @@ import "./Requester.sol";
 import "./Trainer.sol";
 import "./JobContract.sol";
 
+event JobContractCreated(address indexed job, uint256 indexed offerId, address indexed requester, address trainer);
 
 contract DAO {
     // Add the library methods
@@ -151,7 +154,7 @@ contract DAO {
             Requester offerMaker = Requester(requesters[offer.offerMaker]);
             JobContract newContract = new JobContract(offer);
 
-            trainer.newContract(newContract);
+            emit JobContractCreated(address(newContract), offer.ID, offer.offerMaker, offer.trainer);
             offerMaker.newContract(newContract);
 
             //Insere no hash de Contractos
@@ -190,6 +193,10 @@ contract DAO {
     
     function isTrainer(address trainer) internal view returns (bool){
         return (trainers[trainer] != address(0));
+    }
+
+    function isJob(address addr) public view returns (bool) {
+    return address(jobContracts[addr]) != address(0);
     }
 
     function isRequester(address requester) internal view returns (bool){
