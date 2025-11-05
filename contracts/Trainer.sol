@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity ^0.8.0;
+pragma solidity ^0.8.20;
 import "@openzeppelin/contracts/utils/Counters.sol";
-import "@openzeppelin/contracts/utils/structs/EnumerableMap.sol";
 import "hardhat/console.sol";
 import "./DataTypes.sol";
 import "./JobContract.sol";
@@ -53,10 +52,10 @@ contract Trainer {
 
     function newOffer(DataTypes.Offer memory offer) external onlyDAO {
         console.log("newOffer: from", offer.offerMaker);
-        
+
         Log.Offer(offer);
         insertOffer(offer);
-        
+
         console.log("Trainer: DAO =", DAO, "Owner=", owner);
     }
 
@@ -95,6 +94,10 @@ contract Trainer {
         return (pendingOffers[offerID].trainer != address(0));
     }
 
+    function getProfile() external view returns (int, string[] memory, DataTypes.Specification memory) {
+        return (rating, tags, specification);
+    }
+
     //FUNÇÕES AUXILIARES
     function insertOffer(DataTypes.Offer memory offer) internal {
         pendingOffers[offer.ID] = offer;
@@ -130,7 +133,7 @@ contract Trainer {
 
 
             //Deleta a oferta do mapping
-            delete pendingOffers[idxOffer];
+            delete pendingOffers[offerID];
 
             console.log("deleteOffer:" , offerID, idxOffer, pendingOffersIDs.length);
         }

@@ -1,17 +1,17 @@
 import os, numpy as np
 import flwr as fl
 from typing import List
-from flwr.common import ndarrays_to_parameters, parameters_to_ndarrays
 from dotenv import load_dotenv
 from onchain_job import job_send_update
 
 from ipfs import ipfs_get_numpy, ipfs_add_numpy
-from onchain import send_update
-from utils import JOB_ID
 
 load_dotenv()
 
 JOB_ADDR = os.getenv("JOB_ADDR")
+NUM_EXAMPLES = int(os.getenv("NUM_EXAMPLES", "100"))
+
+assert JOB_ADDR, "Configure JOB_ADDR no .env"
 
 def local_train(params: List[np.ndarray]) -> List[np.ndarray]:
     # Demonstração: treino “fake” (adicione ruído). Troque por treino real.
@@ -32,6 +32,7 @@ class Client(fl.client.NumPyClient):
         cid_up = ipfs_add_numpy(updated, "client_update.npz")
         r = job_send_update(JOB_ADDR, cid_up)
         print(f"[JOB {JOB_ADDR}] SendUpdate tx={r['hash']} gas={r['gasETH']:.8f} ETH")
+        return updated, NUM_EXAMPLES, {"cid": cid_up}
 
     def evaluate(self, parameters, config):
         loss, acc = local_eval(parameters)

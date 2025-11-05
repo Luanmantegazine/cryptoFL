@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity ^0.8.0;
+pragma solidity ^0.8.20;
 import "hardhat/console.sol";
 
 library DataTypes {
@@ -47,12 +47,13 @@ library DataTypes {
     struct Offer {
         uint256 ID;
         string description;
-        string modelCID;
-        string serverEndpoint;
+        bytes32 modelCIDHash;
+        bytes32 serverEndpointHash;
+        bytes encryptedMetadata;
         uint256 valueByUpdate;
-        uint256 numberOfUpdates;        
+        uint256 numberOfUpdates;
         address offerMaker;
-        address trainer; 
+        address trainer;
         //Talvez adicionar algum tipo de prazo limit de aceitação.
     }
     
@@ -81,9 +82,9 @@ library Log {
     function Offer(DataTypes.Offer memory offer) public view {
         console.log("ID =", offer.ID);
         console.log("Decription =", offer.description);
-        console.log("ModelCID =", offer.modelCID);
+        console.log("ModelCIDHash =", offer.modelCIDHash);
         console.log("ValueByUpdate =", offer.valueByUpdate);
         console.log("numberOfUpdates =", offer.numberOfUpdates);
-        console.log("OfferMaker =", offer.offerMaker);   
+        console.log("OfferMaker =", offer.offerMaker);
     }
 }

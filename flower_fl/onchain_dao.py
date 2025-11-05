@@ -4,19 +4,36 @@ from typing import Any, Dict, List, Tuple
 from dotenv import load_dotenv
 from web3 import Web3
 from eth_account import Account
+from eth_utils import keccak
+
+from .deployments import resolve_address
 
 load_dotenv()
 RPC_URL = os.getenv("RPC_URL")
 PRIVATE_KEY = os.getenv("PRIVATE_KEY")
-DAO_ADDRESS = os.getenv("DAO_ADDRESS")
 DAO_ABI_PATH = os.getenv("DAO_ABI_PATH")
+DEPLOYMENTS_DIR = os.getenv("DEPLOYMENTS_DIR", "deployments")
+IGNITION_DIR = os.getenv("IGNITION_DIR", "ignition/deployments")
+
+assert RPC_URL and PRIVATE_KEY, "Defina RPC_URL e PRIVATE_KEY no .env"
+assert DAO_ABI_PATH, "Defina DAO_ABI_PATH no .env"
 
 w3 = Web3(Web3.HTTPProvider(RPC_URL, request_kwargs={"timeout": 60}))
 acct = Account.from_key(PRIVATE_KEY)
 
+
 def _abi(path: str):
     data = json.loads(Path(path).read_text())
     return data["abi"] if isinstance(data, dict) and "abi" in data else data
+
+
+DAO_ADDRESS = resolve_address(
+    os.getenv("DAO_ADDRESS"),
+    w3,
+    name="dao",
+    deployments_dir=DEPLOYMENTS_DIR,
+    ignition_dir=IGNITION_DIR,
+)
 
 DAO = w3.eth.contract(
     address=Web3.to_checksum_address(DAO_ADDRESS),
@@ -25,14 +42,21 @@ DAO = w3.eth.contract(
 
 def _send(fn, value_wei: int = 0) -> Dict[str, Any]:
     nonce = w3.eth.get_transaction_count(acct.address)
-    tx = fn.build_transaction({
+    base = fn.build_transaction({
         "from": acct.address,
         "nonce": nonce,
         "value": value_wei,
-        "gas": 2_000_000,
-        "maxFeePerGas": w3.to_wei("0.2", "gwei"),
-        "maxPriorityFeePerGas": w3.to_wei("0.05", "gwei"),
     })
+    gas = w3.eth.estimate_gas(base)
+    gas_price = w3.eth.gas_price
+    max_priority = min(gas_price // 10 or 1, w3.to_wei("2", "gwei"))
+    tx = {
+        **base,
+        "gas": int(gas * 120 // 100 + 1),
+        "maxFeePerGas": gas_price + max_priority,
+        "maxPriorityFeePerGas": max_priority,
+        "chainId": w3.eth.chain_id,
+    }
     signed = acct.sign_transaction(tx)
     tx_hash = w3.eth.send_raw_transaction(signed.rawTransaction)
     rcpt = w3.eth.wait_for_transaction_receipt(tx_hash)
@@ -66,11 +90,18 @@ def match_trainers(job_requirements: Tuple) -> List[str]:
     return DAO.functions.matchTrainers(job_requirements).call()
 
 def make_offer(description: str, model_cid: str, value_by_update_wei: int,
-               number_of_updates: int, trainer_addr: str, server_endpoint: str):
+               number_of_updates: int, trainer_addr: str, server_endpoint: str,
+               encrypted_metadata: bytes = b""):
+    model_hash = keccak(text=model_cid)
+    endpoint_hash = keccak(text=server_endpoint)
     fn = DAO.functions.MakeOffer(
-        description, model_cid, value_by_update_wei,
-        number_of_updates, Web3.to_checksum_address(trainer_addr),
-        server_endpoint
+        description,
+        model_hash,
+        endpoint_hash,
+        encrypted_metadata,
+        value_by_update_wei,
+        number_of_updates,
+        Web3.to_checksum_address(trainer_addr),
     )
     return _send(fn)
 
