@@ -1,54 +1,82 @@
 // SPDX-License-Identifier: UNLICENSED
+pragma solidity ^0.8.20;
+
+import "hardhat/console.sol";
+import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
+
 import "./DataTypes.sol";
 
-contract JobContract {
-    string description;
-    string modelCID;
-    string serverEndpoint;
-    uint256 valueByUpdate;
-    uint256 numberOfUpdates;
-    uint256 updatesDone;
-    uint256 withdrawAmount;
+contract JobContract is ReentrancyGuard {
+    string private description;
+    uint256 private valueByUpdate;
+    uint256 private numberOfUpdates;
+    uint256 private updatesDone;
+    uint256 private withdrawAmount;
+
+    bytes32 public initialModelHash;
+    bytes32 public initialServerEndpointHash;
+    bytes public initialMetadata;
+
+    bytes32 public latestModelHash;
 
     DataTypes.Status public Status;
 
-    address offerMaker;
-    address trainer;
-    address DAOManager;
+    address public offerMaker;
+    address public trainer;
+    address public DAOManager;
 
-    uint256 lockedAmount;
-    uint256 availableAmount;
+    uint256 public lockedAmount;
+    uint256 public availableAmount;
+
+    bytes32[] public clientUpdateHashes;
+    mapping(bytes32 => bool) public receivedUpdate;
+
+    event FundsLocked(uint256 amount);
+    event ClientUpdateRecorded(
+        bytes32 indexed updateHash,
+        address indexed caller,
+        uint256 updatesDone,
+        uint256 escrowedAmount,
+        bytes encryptedPointer
+    );
+    event GlobalModelUpdated(bytes32 indexed modelHash, uint256 updatesDone, bytes encryptedPointer);
+    event PayoutReleased(address indexed to, uint256 value);
 
     modifier onlyDAO {
-      require(msg.sender == DAOManager, "Only DAO");
-      _;
+        require(msg.sender == DAOManager, "Only DAO");
+        _;
     }
 
-    modifier onlyDAOOrOfferMaker {
-        require(msg.sender == DAOManager || msg.sender == offerMaker, "Only DAO or OfferMaker");
+    modifier onlyAuthorizedReporter {
+        require(
+            msg.sender == DAOManager || msg.sender == offerMaker || msg.sender == trainer,
+            "Not authorized"
+        );
         _;
     }
 
     constructor(DataTypes.Offer memory offer) {
-        DAOManager      = msg.sender;
-        offerMaker      = offer.offerMaker;
-        trainer         = offer.trainer;
-        description     = offer.description;
-        valueByUpdate   = offer.valueByUpdate;
+        DAOManager = msg.sender;
+        offerMaker = offer.offerMaker;
+        trainer = offer.trainer;
+        description = offer.description;
+        valueByUpdate = offer.valueByUpdate;
         numberOfUpdates = offer.numberOfUpdates;
-        serverEndpoint  = offer.serverEndpoint;
-        updatesDone     = 0;
-        lockedAmount    = 0;
+        initialModelHash = offer.modelCIDHash;
+        initialServerEndpointHash = offer.serverEndpointHash;
+        initialMetadata = offer.encryptedMetadata;
+        updatesDone = 0;
+        lockedAmount = 0;
         availableAmount = 0;
-        withdrawAmount  = 0;
-        Status          = DataTypes.Status.WaitingSignatures;
+        withdrawAmount = 0;
+        Status = DataTypes.Status.WaitingSignatures;
 
         console.log("JobContract : Trainer = ", trainer, offerMaker);
     }
 
     function LogContract() public view {
         console.log("JobContract: Decription =", description);
-        console.log("JobContract: ModelCID =", modelCID);
+        console.log("JobContract: InitialModelHash =", initialModelHash);
         console.log("JobContract: ValueByUpdate =", valueByUpdate);
         console.log("JobContract: numberOfUpdates =", numberOfUpdates);
         console.log("JobContract: updatesDone =", updatesDone);
@@ -56,35 +84,58 @@ contract JobContract {
         console.log("JobContract: availableAmount =", availableAmount);
         console.log("JobContract: OfferMaker =", offerMaker);
         console.log("JobContract: trainer =", trainer);
-        console.log("JobContract: Status =", DataTypes.StatusToStr(Status)); 
+        console.log("JobContract: Status =", DataTypes.StatusToStr(Status));
     }
 
-    function totalAmount() public view returns (uint256){
-        return (valueByUpdate*numberOfUpdates);
+    function totalAmount() public view returns (uint256) {
+        return (valueByUpdate * numberOfUpdates);
     }
 
-    function lockAmount(uint amount) public onlyDAO {
-        lockedAmount = amount;
-        console.log("lockAmount =", lockedAmount);    
+    function deposit() external payable onlyDAO {
+        lockedAmount += msg.value;
+        require(lockedAmount <= totalAmount(), "Deposit exceeds contract value");
+        emit FundsLocked(msg.value);
     }
 
-    function newUpdate() public onlyDAOOrOfferMaker {
-        updatesDone = updatesDone +1;
-        availableAmount = availableAmount + valueByUpdate;
+    function recordClientUpdate(bytes32 cidHash, bytes calldata encryptedCid) external onlyAuthorizedReporter {
+        require(!receivedUpdate[cidHash], "Update already recorded");
+        require(updatesDone < numberOfUpdates, "All updates completed");
+
+        receivedUpdate[cidHash] = true;
+        clientUpdateHashes.push(cidHash);
+        updatesDone += 1;
+        availableAmount += valueByUpdate;
+        withdrawAmount += valueByUpdate;
 
         if (updatesDone == numberOfUpdates) {
             Status = DataTypes.Status.Fulfilled;
         }
-        console.log("newUpdate =", updatesDone, availableAmount); 
+
+        emit ClientUpdateRecorded(cidHash, msg.sender, updatesDone, availableAmount, encryptedCid);
     }
 
-    function withdraw() public onlyDAO returns(uint256){
-        uint256 amout  = availableAmount;
-        withdrawAmount = withdrawAmount + amout;
-        lockedAmount   = lockedAmount - amout;
-        
-        console.log("withdraw =", amout, withdrawAmount, lockedAmount); 
-        return amout;
+    function publishGlobalModel(bytes32 cidHash, bytes calldata encryptedCid) external onlyDAO {
+        latestModelHash = cidHash;
+        emit GlobalModelUpdated(cidHash, updatesDone, encryptedCid);
+    }
+
+    function releaseToTrainer(address payable recipient) external onlyDAO nonReentrant returns (uint256) {
+        if (recipient == address(0)) {
+            recipient = payable(trainer);
+        }
+
+        uint256 amount = availableAmount;
+        require(amount > 0, "No funds available");
+        require(amount <= address(this).balance, "Insufficient balance");
+
+        availableAmount = 0;
+        lockedAmount -= amount;
+
+        (bool ok, ) = recipient.call{value: amount}("");
+        require(ok, "Transfer failed");
+
+        emit PayoutReleased(recipient, amount);
+        return amount;
     }
 
     function sign(address signer) public onlyDAO {
@@ -124,7 +175,11 @@ contract JobContract {
         return offerMaker;
     }
 
-    function getServerEndpoint() public view returns (string memory){
-        return serverEndpoint;
+    function getInitialServerEndpointHash() public view returns (bytes32) {
+        return initialServerEndpointHash;
+    }
+
+    function getInitialMetadata() external view returns (bytes memory) {
+        return initialMetadata;
     }
 }

@@ -34,5 +34,23 @@ export default defineConfig({
       url: configVariable("SEPOLIA_RPC_URL"),
       accounts: [configVariable("SEPOLIA_PRIVATE_KEY")],
     },
+    optimism: {
+      type: "http",
+      chainType: "op",
+      url: configVariable("OPTIMISM_RPC_URL"),
+      accounts: [configVariable("OPTIMISM_PRIVATE_KEY")],
+    },
+    arbitrum: {
+      type: "http",
+      chainType: "generic",
+      url: configVariable("ARBITRUM_RPC_URL"),
+      accounts: [configVariable("ARBITRUM_PRIVATE_KEY")],
+    },
+    base: {
+      type: "http",
+      chainType: "generic",
+      url: configVariable("BASE_RPC_URL"),
+      accounts: [configVariable("BASE_PRIVATE_KEY")],
+    },
   },
 });
