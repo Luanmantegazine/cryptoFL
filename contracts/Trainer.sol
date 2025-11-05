@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: UNLICENSED
+pragma solidity ^0.8.0;
 import "@openzeppelin/contracts/utils/Counters.sol";
 import "@openzeppelin/contracts/utils/structs/EnumerableMap.sol";
 import "hardhat/console.sol";
@@ -10,7 +12,7 @@ contract Trainer {
     int      public      rating;                     //TODO: sum(evaluations[])/count(evaluations) 
     DataTypes.Evaluation[]  public  evaluations;    // List of received evaluation
     DataTypes.Specification public  specification; // Specifications of the trainer.
-    string publick dataPreviewCID;
+    string public dataPreviewCID;
    
     uint256[] internal pendingOffersIDs;      
     mapping(uint256 => DataTypes.Offer) private pendingOffers; //<offerID, Offer> Ofertas de trabalho que o treinador tem.

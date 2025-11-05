@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: UNLICENSED
 import "./DataTypes.sol";
 
 contract JobContract {
@@ -25,6 +26,7 @@ contract JobContract {
 
     modifier onlyDAOOrOfferMaker {
         require(msg.sender == DAOManager || msg.sender == offerMaker, "Only DAO or OfferMaker");
+        _;
     }
 
     constructor(DataTypes.Offer memory offer) {

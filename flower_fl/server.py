@@ -1,90 +1,41 @@
+import os
 import flwr as fl
-import numpy as np
-from web3 import Web3
+from onchain_job import job_update_global
+from ipfs import ipfs_add_numpy
+from utils import JOB_ID, ROUNDS, init_weights
 
-# --- 1. Configuração Web3 (Plano de Controle) ---
-w3 = Web3(Web3.HTTPProvider('http://127.0.0.1:8545'))  # Ex: Conexão com Arbitrum
-w3.eth.default_account = "0x..."  # Endereço da carteira do Requester
-requester_private_key = "..."  # Chave privada do Requester
-
-# ABIs e Endereços dos contratos
-job_contract_abi = [...]
-job_contract_address = "0x..."  # Endereço do JobContract obtido após AcceptOffer
-
-# Conectar ao contrato
-job_contract = w3.eth.contract(address=job_contract_address, abi=job_contract_abi)
-
-# Ler os parâmetros do trabalho do contrato
-try:
-    NUM_ROUNDS = job_contract.functions.numberOfUpdates().call()
-    VALUE_PER_UPDATE = job_contract.functions.valueByUpdate().call()
-    print(f"Lendo do JobContract: {NUM_ROUNDS} rodadas, pagando {VALUE_PER_UPDATE} por rodada.")
-except Exception as e:
-    print(f"Erro ao ler contrato: {e}")
-    exit()
+JOB_ADDRS = [x.strip() for x in os.getenv("JOB_ADDRS", "").split(",") if x.strip()]
 
 
-# --- 2. Lógica de Agregação (Plano de Dados) ---
+class Strategy(fl.server.strategy.FedAvg):
+    def __init__(self):
+        super().__init__()
+        self.latest_cid = ipfs_add_numpy(init_weights(), "global_round0.npz")
+        for addr in JOB_ADDRS:
+            r = job_update_global(addr, self.latest_cid)
+            print(f"[JOB {addr}] UpdateGlobalModel r0 tx={r['hash']} gas={r['gasETH']:.8f} ETH")
 
-# Esta classe personalizada irá interagir com o contrato
-class BlockchainStrategy(fl.server.strategy.FedAvg):
+    def configure_fit(self, rnd, params, client_manager):
+        return super().configure_fit(rnd, params, client_manager)
 
-    def aggregate_fit(self, server_round, results, failures):
-        """Agrega os resultados do 'fit' e reporta à blockchain."""
-
-        print(f"Servidor: Recebendo {len(results)} atualizações na rodada {server_round}.")
-
-        # 1. Agrega os modelos (lógica padrão do FedAvg)
-        aggregated_parameters = super().aggregate_fit(server_round, results, failures)
-
-        if aggregated_parameters is not None:
-            # 2. Chama o Contrato (Plano de Controle)
-            # Se a agregação foi bem-sucedida, chama newUpdate() para pagar os Trainers
-            try:
-                print(f"Servidor: Reportando Rodada {server_round} para a Blockchain...")
-                nonce = w3.eth.get_transaction_count(w3.eth.default_account)
-
-                tx = job_contract.functions.newUpdate().build_transaction({
-                    'from': w3.eth.default_account,
-                    'nonce': nonce,
-                    'gas': 200000,
-                    'gasPrice': w3.to_wei('1', 'gwei')  # Preço do gás (ex: Arbitrum)
-                })
-
-                signed_tx = w3.eth.account.sign_transaction(tx, requester_private_key)
-                tx_hash = w3.eth.send_raw_transaction(signed_tx.rawTransaction)
-
-                print(f"Servidor: Transação newUpdate() enviada: {tx_hash.hex()}")
-
-            except Exception as e:
-                print(f"Servidor: ERRO ao chamar newUpdate: {e}")
-                # (Lógica de retry pode ser necessária aqui)
-
-        return aggregated_parameters
+    def aggregate_fit(self, rnd, results, failures):
+        agg, _ = super().aggregate_fit(rnd, results, failures)
+        if agg and agg.parameters:
+            nds = fl.common.parameters_to_ndarrays(agg.parameters)
+            self.latest_cid = ipfs_add_numpy(nds, f"global_round{rnd}.npz")
+            for addr in JOB_ADDRS:
+                r = job_update_global(addr, self.latest_cid)
+                print(f"[JOB {addr}] UpdateGlobalModel r{rnd} tx={r['hash']} gas={r['gasETH']:.8f} ETH")
+        return agg, {}
 
 
-# --- 3. Iniciar o Servidor Flower ---
+def main():
+    fl.server.start_server(
+        server_address="0.0.0.0:8080",
+        strategy=Strategy(),
+        config=fl.server.ServerConfig(num_rounds=ROUNDS),
+    )
 
-# O Requester (Servidor) define o filtro inicial (Kernel)
-# Este é o "modelo global" inicial
-initial_filter = np.array([[0, -1, 0], [-1, 5, -1], [0, -1, 0]])
-initial_parameters = fl.common.ndarrays_to_parameters([initial_filter])
 
-# Configura a estratégia
-strategy = BlockchainStrategy(
-    initial_parameters=initial_parameters,
-    min_fit_clients=1,  # Número mínimo de trainers por rodada (definido no contrato)
-    min_available_clients=1,  # Número total de trainers no job
-)
-
-print(f"Iniciando Servidor Flower (Requester) por {NUM_ROUNDS} rodadas...")
-print("Aguardando Trainers (Clientes Flower) se conectarem...")
-
-# Inicia o servidor
-fl.server.start_server(
-    server_address="0.0.0.0:8080",  # Este IP deve ser público (o 'serverEndpoint' da oferta)
-    config=fl.server.ServerConfig(num_rounds=NUM_ROUNDS),
-    strategy=strategy
-)
-
-print("Trabalho concluído. Verifique o JobContract para pagamentos.")
+if __name__ == "__main__":
+    main()

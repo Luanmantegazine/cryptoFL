@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: UNLICENSED
+pragma solidity ^0.8.0;
 import "hardhat/console.sol";
 
 library DataTypes {
@@ -46,6 +48,7 @@ library DataTypes {
         uint256 ID;
         string description;
         string modelCID;
+        string serverEndpoint;
         uint256 valueByUpdate;
         uint256 numberOfUpdates;        
         address offerMaker;
