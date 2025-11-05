@@ -1,23 +1,36 @@
+import json
+import os
 import json, os
-from typing import Any, Dict
+
 from dotenv import load_dotenv
 from web3 import Web3
 from eth_account import Account
 from eth_utils import keccak
 
+from .deployments import resolve_address
+
 load_dotenv()
 
 RPC_URL = os.getenv("RPC_URL")
 PRIVATE_KEY = os.getenv("PRIVATE_KEY")
-DAO_ADDRESS = os.getenv("DAO_ADDRESS")
 DAO_ABI_PATH = os.getenv("DAO_ABI_PATH")
+DEPLOYMENTS_DIR = os.getenv("DEPLOYMENTS_DIR", "deployments")
+IGNITION_DIR = os.getenv("IGNITION_DIR", "ignition/deployments")
 
 assert RPC_URL and PRIVATE_KEY, "Defina RPC_URL e PRIVATE_KEY no .env"
-assert DAO_ADDRESS and DAO_ABI_PATH, "Defina DAO_ADDRESS e DAO_ABI_PATH no .env"
+assert DAO_ABI_PATH, "Defina DAO_ABI_PATH no .env"
 
 w3 = Web3(Web3.HTTPProvider(RPC_URL, request_kwargs={"timeout": 60}))
 acct = Account.from_key(PRIVATE_KEY)
 DAO = None
+DAO_ADDRESS = resolve_address(
+    os.getenv("DAO_ADDRESS"),
+    w3,
+    name="dao",
+    deployments_dir=DEPLOYMENTS_DIR,
+    ignition_dir=IGNITION_DIR,
+)
+
 
 
 def _load_abi(path: str):
