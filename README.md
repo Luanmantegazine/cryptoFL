@@ -15,6 +15,31 @@ This example project includes:
 
 ## Usage
 
+### Deploying and retrieving the DAO address
+
+Use the provided Hardhat script to deploy the `DAO` contract on the network of your choice. The script prints the address and saves a JSON file under `deployments/dao-<chainId>.json`, which is automatically consumed by the Python helpers when `DAO_ADDRESS` is left unset or configured as `0x000…0000`.
+
+```shell
+npx hardhat run --network arbitrumSepolia scripts/deploy-dao.ts
+```
+
+After the transaction is mined the output will resemble:
+
+```
+DAO deployed at: 0x1234...abcd
+Saved deployment info to deployments/dao-421614.json
+```
+
+Update your `.env` with the ABI path only:
+
+```
+DAO_ABI_PATH=artifacts/contracts/DAO.sol/DAO.json
+```
+
+When `DAO_ADDRESS` is omitted or set to the zero address, the Python modules (`flower_fl/onchain.py` and `flower_fl/onchain_dao.py`) will load the value stored in `deployments/` or the latest Ignition deployment (e.g. `ignition/deployments/chain-421614/*/deployed_addresses.json`).
+
+If you already deployed using Hardhat Ignition, you can skip the script—the helpers will detect the recorded address automatically.
+
 ### Running Tests
 
 To run all the tests in the project, execute the following command:
