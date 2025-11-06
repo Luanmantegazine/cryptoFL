@@ -14,47 +14,37 @@ async function main() {
     throw new Error("Nenhuma carteira configurada. Defina PRIVATE_KEY na rede escolhida.");
   }
 
-  // 1. Deploy da biblioteca DataTypes (Corrigido com nome qualificado)
-  console.log("Deploying library DataTypes...");
-  const dataTypesLib = await viem.deployContract("contracts/DataTypes.sol:DataTypes");
-  console.log("DataTypes library deployed at:", dataTypesLib.address);
-
-  // 2. Deploy do DAO (Corrigido com nome qualificado)
   console.log("Deploying DAO with account:", wallet.account.address);
-  const txHash = await viem.deployContract("contracts/DAO.sol:DAO", [], {
-    libraries: {
-      "project/contracts/DataTypes.sol:DataTypes": dataTypesLib.address,
-    }
-  });
 
-  console.log("Awaiting deployment tx:", txHash);
+  const daoContract = await viem.deployContract("contracts/DAO.sol:DAO", []);
 
-  const receipt = await publicClient.waitForTransactionReceipt({ hash: txHash });
+  console.log("Deployment finished.");
 
-  if (!receipt.contractAddress) {
+  // Obtemos o endereço e o hash da transação a partir da instância do contrato
+  const contractAddress = daoContract.address;
+  const transactionHash = daoContract.deploymentTransaction?.hash;
+
+  if (!contractAddress) {
     throw new Error("Não foi possível obter o endereço do contrato DAO");
   }
 
   const chain = await publicClient.getChainId();
 
-  console.log("DAO deployed at:", receipt.contractAddress);
+  console.log("DAO deployed at:", contractAddress);
   console.log("Chain id:", chain);
 
   const outDir = resolve("deployments");
-  // CORREÇÃO: "outDir" (minúsculo) e não "OutDir"
   mkdirSync(outDir, { recursive: true });
   const filePath = join(outDir, `dao-${chain}.json`);
 
   const payload = {
-    dao: receipt.contractAddress,
+    dao: contractAddress,
     chainId: Number(chain),
-    network: network.name,
+    network: connection.networkName,
     deployer: wallet.account.address,
-    transactionHash: txHash,
+    transactionHash: transactionHash,
     timestamp: new Date().toISOString(),
-    libraries: {
-      DataTypes: dataTypesLib.address,
-    }
+    // 'libraries' removido daqui também
   };
 
   writeFileSync(filePath, JSON.stringify(payload, null, 2), { encoding: "utf-8" });

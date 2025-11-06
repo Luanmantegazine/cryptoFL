@@ -6,7 +6,7 @@ from web3 import Web3
 from eth_account import Account
 from eth_utils import keccak
 
-from .deployments import resolve_address
+from deployments import resolve_address
 
 load_dotenv()
 RPC_URL = os.getenv("RPC_URL")
