@@ -20,7 +20,10 @@ from onchain_dao import (
     get_pending_offers,
     accept_offer,
     sign_job_contract,
-    w3
+    w3,
+    get_requester_contract,
+    get_trainer_contract,
+    ZERO_ADDRESS,
 )
 
 # --- FIM DA CORREÇÃO ---
@@ -73,16 +76,24 @@ def run_all_phases():
     if not switch_env_user(KEY_REQUESTER): return
     print(f"\n--- Parte 1: Ações do Requisitante ({acct.address}) ---")
     print("1. Registrando Requisitante...")
-    r_requester = register_requester()
-    print(f"   -> Tx: {r_requester['hash']}")
+    requester_contract = get_requester_contract(acct.address)
+    if requester_contract and requester_contract != ZERO_ADDRESS:
+        print(f"   -> Requisitante já registrado. Contrato: {requester_contract}")
+    else:
+        r_requester = register_requester()
+        print(f"   -> Tx: {r_requester['hash']}")
 
     # --- Parte 2: Registro do Treinador ---
     if not switch_env_user(KEY_TRAINER): return
     print(f"\n--- Parte 2: Ações do Treinador ({acct.address}) ---")
     print("2. Registrando Treinador...")
     spec = ("Processador Exemplo", "16GB", "8 Cores")
-    r_trainer = register_trainer("Treinador de IA", spec)
-    print(f"   -> Tx: {r_trainer['hash']}")
+    trainer_contract = get_trainer_contract(acct.address)
+    if trainer_contract and trainer_contract != ZERO_ADDRESS:
+        print(f"   -> Treinador já registrado. Contrato: {trainer_contract}")
+    else:
+        r_trainer = register_trainer("Treinador de IA", spec)
+        print(f"   -> Tx: {r_trainer['hash']}")
 
     # --- Parte 3: Oferta do Requisitante ---
     if not switch_env_user(KEY_REQUESTER): return

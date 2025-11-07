@@ -42,6 +42,8 @@ DAO = w3.eth.contract(
     abi=_abi(DAO_ABI_PATH),
 )
 
+ZERO_ADDRESS = "0x0000000000000000000000000000000000000000"
+
 def _send(fn, value_wei: int = 0) -> Dict[str, Any]:
     nonce = w3.eth.get_transaction_count(acct.address)
     base = fn.build_transaction({
@@ -121,3 +123,13 @@ def sign_job_contract(job_addr: str, total_amount_wei: int = 0):
 def get_offer_details(offer_id: int) -> tuple:
     """ Busca os detalhes de uma oferta específica pelo ID """
     return DAO.functions.getOfferDetails(offer_id).call()
+
+
+def get_requester_contract(account: str) -> str:
+    """Retorna o contrato do requester para o address informado ou ZERO_ADDRESS."""
+    return DAO.functions.requesters(Web3.to_checksum_address(account)).call()
+
+
+def get_trainer_contract(account: str) -> str:
+    """Retorna o contrato do trainer para o address informado ou ZERO_ADDRESS."""
+    return DAO.functions.trainers(Web3.to_checksum_address(account)).call()
