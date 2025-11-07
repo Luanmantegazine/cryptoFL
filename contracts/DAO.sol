@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.20;
 
+import "@openzeppelin/contracts/utils/Address.sol";
 import "@openzeppelin/contracts/utils/Counters.sol";
 import "./DataTypes.sol";
 import "./Requester.sol";
@@ -115,16 +116,13 @@ contract DAO {
         bytes calldata encryptedMetadata,
         uint256 valueByUpdate,
         uint256 numberOfUpdates,
-        address trainerAddr
+        address trainerCandidate
     ) external {
         require(
             isRequester(msg.sender), "Requester not registered"
         );
-        require(
-            isTrainer(trainerAddr), "Trainer not found"
-        );
 
-        Trainer trainer = Trainer(payable(trainers[trainerAddr])); // Correção de casting
+        (address trainerWallet, Trainer trainer) = resolveTrainer(trainerCandidate);
 
         DataTypes.Offer memory offer;
         offer.ID              = nextID();
@@ -135,7 +133,7 @@ contract DAO {
         offer.valueByUpdate   = valueByUpdate;
         offer.numberOfUpdates = numberOfUpdates;
         offer.offerMaker      = msg.sender;
-        offer.trainer         = trainerAddr;
+        offer.trainer         = trainerWallet;
 
         trainer.newOffer(offer);
     }
@@ -232,6 +230,25 @@ contract DAO {
 
     function isTrainer(address trainer) internal view returns (bool){
         return (trainers[trainer] != address(0));
+    }
+
+    function resolveTrainer(address candidate) internal view returns (address wallet, Trainer trainer) {
+        address trainerContractAddr = trainers[candidate];
+        if (trainerContractAddr != address(0)) {
+            return (candidate, Trainer(payable(trainerContractAddr)));
+        }
+
+        if (!Address.isContract(candidate)) {
+            revert("Trainer not found");
+        }
+
+        Trainer trainerContract = Trainer(payable(candidate));
+        address owner = trainerContract.owner();
+        address mappedContract = trainers[owner];
+
+        require(mappedContract == address(trainerContract) && owner != address(0), "Trainer not found");
+
+        return (owner, trainerContract);
     }
 
     function isMember(address account) internal view returns (bool) {

@@ -1,6 +1,37 @@
 import hardhatToolboxViemPlugin from "@nomicfoundation/hardhat-toolbox-viem";
 import { configVariable, defineConfig } from "hardhat/config";
-import "dotenv/config";
+import { existsSync, readFileSync } from "node:fs";
+import { resolve } from "node:path";
+
+function loadEnvFile(file = ".env") {
+  const fullPath = resolve(process.cwd(), file);
+  if (!existsSync(fullPath)) {
+    return;
+  }
+
+  const content = readFileSync(fullPath, "utf8");
+  for (const rawLine of content.split(/\r?\n/)) {
+    const line = rawLine.trim();
+    if (!line || line.startsWith("#")) {
+      continue;
+    }
+
+    const eqIndex = line.indexOf("=");
+    if (eqIndex === -1) {
+      continue;
+    }
+
+    const key = line.slice(0, eqIndex).trim();
+    if (!key || process.env[key] !== undefined) {
+      continue;
+    }
+
+    const value = line.slice(eqIndex + 1).trim().replace(/^['"]|['"]$/g, "");
+    process.env[key] = value;
+  }
+}
+
+loadEnvFile();
 
 export default defineConfig({
   plugins: [hardhatToolboxViemPlugin],
