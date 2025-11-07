@@ -14,15 +14,15 @@ async function main() {
     throw new Error("Nenhuma carteira configurada. Defina PRIVATE_KEY na rede escolhida.");
   }
 
+  // Deploy do DAO (Sem bibliotecas)
   console.log("Deploying DAO with account:", wallet.account.address);
 
   const daoContract = await viem.deployContract("contracts/DAO.sol:DAO", []);
 
   console.log("Deployment finished.");
 
-  // Obtemos o endereço e o hash da transação a partir da instância do contrato
   const contractAddress = daoContract.address;
-  const transactionHash = daoContract.deploymentTransaction?.hash;
+  const transactionHash = daoContract.deploymentTransaction?.hash; // Usamos ?.hash
 
   if (!contractAddress) {
     throw new Error("Não foi possível obter o endereço do contrato DAO");
@@ -40,11 +40,10 @@ async function main() {
   const payload = {
     dao: contractAddress,
     chainId: Number(chain),
-    network: connection.networkName,
+    network: connection.networkName, // Corrigido
     deployer: wallet.account.address,
-    transactionHash: transactionHash,
+    transactionHash: transactionHash ?? "N/A", // Corrigido
     timestamp: new Date().toISOString(),
-    // 'libraries' removido daqui também
   };
 
   writeFileSync(filePath, JSON.stringify(payload, null, 2), { encoding: "utf-8" });

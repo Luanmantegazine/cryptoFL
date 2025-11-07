@@ -22,13 +22,12 @@ contract Trainer {
     address public owner;
     address public DAO;
 
-    constructor(address ownerAddress, string memory _description, DataTypes.Specification memory _specification) {
+    constructor(address payable ownerAddress, string memory _description, DataTypes.Specification memory _specification) {
         DAO    = msg.sender;
         owner         = ownerAddress;
         description   = _description;
         specification = _specification;
         rating        = 10;
-        // console.log("Trainer: DAO =", DAO, "Owner=", owner); // Removido
     }
 
     modifier onlyOwner {
@@ -71,13 +70,9 @@ contract Trainer {
         return offer;
     }
 
-    function getPendingOffers() external view onlyDAO returns(DataTypes.Offer [] memory) {
-        DataTypes.Offer [] memory listPendingOffers = new DataTypes.Offer[](pendingOffersIDs.length);
-        for (uint256 i = 0; i < pendingOffersIDs.length; i++) {
-            DataTypes.Offer memory pendingOffer = pendingOffers[pendingOffersIDs[i]];
-            listPendingOffers[i] = pendingOffer;
-        }
-        return listPendingOffers;
+   function getPendingOffers() external view onlyDAO returns(uint256 [] memory) {
+    // O loop antigo foi removido
+    return pendingOffersIDs; // Retorna apenas os IDs
     }
 
     function containsOffer(uint256 offerID) public view returns (bool){
@@ -86,6 +81,11 @@ contract Trainer {
 
     function getProfile() external view returns (int, string[] memory, DataTypes.Specification memory) {
         return (rating, tags, specification);
+    }
+
+    function getOfferDetails(uint256 offerID) external view onlyDAO returns (DataTypes.Offer memory) {
+    require(containsOffer(offerID), "Offer not found");
+    return pendingOffers[offerID];
     }
 
     //FUNÇÕES AUXILIARES

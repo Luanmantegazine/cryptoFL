@@ -2,33 +2,25 @@
 pragma solidity ^0.8.20;
 
 import "@openzeppelin/contracts/utils/Counters.sol";
-// import "hardhat/console.sol"; // Removido
-
 import "./DataTypes.sol";
 import "./Requester.sol";
 import "./Trainer.sol";
 import "./JobContract.sol";
 
 event JobContractCreated(address indexed job, uint256 indexed offerId, address indexed requester, address trainer);
-// Eventos de proposta removidos
 
 contract DAO {
-    // Add the library methods
     using Counters for Counters.Counter;
 
-    //Treinadores
     mapping(address => address) trainers;
     address[] public registeredTrainers;
 
-    //Requisitantes
     mapping(address => address) requesters;
     address[] public registeredRequesters;
 
-    //jobContracts Contrats
     mapping(address => JobContract) jobContracts;
 
     Counters.Counter UID;
-    // Struct, Mappings e Counter de Proposta removidos
 
     function nextID() private returns(uint256) {
        uint256 ID = UID.current();
@@ -36,39 +28,23 @@ contract DAO {
        return ID;
     }
 
-    // Trainer
     function registerTrainer (string memory _description, DataTypes.Specification memory _specification ) external returns(address){
         require(
             !isTrainer(msg.sender), "Trainer already registered"
         );
-        // console.log("registerTrainer: ", msg.sender); // Removido
-
-        Trainer newTrainer = new Trainer(msg.sender, _description, _specification);
-
-        //guarda o treinador na hash
+        Trainer newTrainer = new Trainer(payable(msg.sender), _description, _specification);
         trainers[msg.sender] =  address(newTrainer);
         registeredTrainers.push(msg.sender);
-
-        // console.log("registerTrainer: End ", msg.sender, " TrainersCount=", registeredTrainers.length); // Removido
-
         return address(newTrainer);
     }
 
-    //Requester
     function registerRequester ( ) external returns(address){
         require(
             !isRequester(msg.sender), "Requester already registered"
         );
-        // console.log("registerRequester: ", msg.sender); // Removido
-
-        Requester newRequester = new Requester(msg.sender);
-
-        //guarda o requisitante na hash
+        Requester newRequester = new Requester(payable(msg.sender));
         requesters[msg.sender] =  address(newRequester);
         registeredRequesters.push(msg.sender);
-
-        // console.log("registerRequester: End", msg.sender,"RequestersCount=", registeredRequesters.length); // Removido
-
         return address(newRequester);
     }
 
@@ -77,20 +53,18 @@ contract DAO {
         uint256 candidatesCount = 0;
         uint256 i = 0;
 
-        // Log.Requirement(Requirements); // Removido
-
         while ((candidatesCount < Requirements.canditatesToReturn) && (i < registeredTrainers.length)) {
             address trainerAddr = registeredTrainers[i];
-            Trainer trainer = Trainer(trainers[trainerAddr]);
+
+            // --- INÍCIO DA CORREÇÃO HHE910 ---
+            // Convertemos o 'address' para 'payable' antes de converter para o tipo 'Trainer'
+            Trainer trainer = Trainer(payable(trainers[trainerAddr]));
+            // --- FIM DA CORREÇÃO ---
 
             if (isMatch(Requirements, trainer)) {
-                // console.log("requestTrainer: MATCH ", trainerAddr, i); // Removido
                 candidates[candidatesCount] = trainerAddr;
                 candidatesCount = candidatesCount + 1;
             }
-            // else{
-                // console.log("requestTrainer: NOT match ", trainerAddr, i); // Removido
-            // }
             i = i + 1;
         }
         return candidates;
@@ -149,9 +123,8 @@ contract DAO {
         require(
             isTrainer(trainerAddr), "Trainer not found"
         );
-        // console.log("MakeOffer: "); // Removido
 
-        Trainer trainer = Trainer(trainers[trainerAddr]);
+        Trainer trainer = Trainer(payable(trainers[trainerAddr])); // Correção de casting
 
         DataTypes.Offer memory offer;
         offer.ID              = nextID();
@@ -164,29 +137,27 @@ contract DAO {
         offer.offerMaker      = msg.sender;
         offer.trainer         = trainerAddr;
 
-        // Log.Offer(offer); // Removido
         trainer.newOffer(offer);
     }
 
-    function getPendingOffers() external view returns(DataTypes.Offer [] memory) {
+    function getPendingOffers() external view returns(uint256 [] memory) {
         require(
             isTrainer(msg.sender), "Just registered trainners can check pending offer"
         );
-        Trainer trainer = Trainer(trainers[msg.sender]);
-        return trainer.getPendingOffers();
+        Trainer trainer = Trainer(payable(trainers[msg.sender]));
+        return trainer.getPendingOffers(); // Agora retorna uint256[]
     }
 
     function AcceptOffer(uint256 offerID) external {
         require(
             isTrainer(msg.sender), "Just registered trainners can accept an offer"
         );
-        // console.log("DAO: AcceptOffer:", offerID, msg.sender); // Removido
 
-        Trainer trainer = Trainer(trainers[msg.sender]);
+        Trainer trainer = Trainer(payable(trainers[msg.sender])); // Correção de casting
 
         DataTypes.Offer memory offer = trainer.acceptOffer(offerID);
         if (offer.offerMaker != address(0)) {
-            Requester offerMaker = Requester(requesters[offer.offerMaker]);
+            Requester offerMaker = Requester(payable(requesters[offer.offerMaker])); // Correção de casting
             JobContract newContract = new JobContract(offer);
 
             emit JobContractCreated(address(newContract), offer.ID, offer.offerMaker, offer.trainer);
@@ -194,7 +165,6 @@ contract DAO {
             trainer.newContract(newContract);
 
             jobContracts[address(newContract)] = newContract;
-            // console.log("NewContract:", address(newContract),"OfferAccepted =",  offerID); // Removido
         }
     }
 
@@ -204,8 +174,6 @@ contract DAO {
             );
 
         JobContract job    = jobContracts[addrContract];
-        // console.log("signJobContract", msg.sender, msg.value); // Removido
-        // job.LogContract(); // Removido
 
         bool bIsTrainer    = (msg.sender == job.trainerAddr());
         bool bIsOfferMaker = (msg.sender == job.offerMakerAddr());
@@ -222,7 +190,6 @@ contract DAO {
         }
 
         job.sign(msg.sender);
-        // job.LogContract(); // Removido
     }
 
     function releaseJobPayment(address addrContract, address payable recipient) external {
@@ -245,6 +212,14 @@ contract DAO {
         job.publishGlobalModel(cidHash, encryptedCid);
     }
 
+    function getOfferDetails(uint256 offerID) external view returns (DataTypes.Offer memory) {
+        require(
+            isTrainer(msg.sender), "Trainer must be registered"
+        );
+        Trainer trainer = Trainer(payable(trainers[msg.sender]));
+        return trainer.getOfferDetails(offerID);
+    }
+
     function recordClientUpdate(address addrContract, bytes32 cidHash, bytes calldata encryptedCid) external {
         require(isJob(addrContract), "Job Contract not found");
         JobContract job = jobContracts[addrContract];
@@ -254,8 +229,6 @@ contract DAO {
         );
         job.recordClientUpdate(cidHash, encryptedCid);
     }
-
-    // Funções de Governança (createProposal, vote, executeProposal) removidas
 
     function isTrainer(address trainer) internal view returns (bool){
         return (trainers[trainer] != address(0));
