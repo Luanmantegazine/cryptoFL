@@ -3,23 +3,27 @@ import os
 from dotenv import load_dotenv, find_dotenv, set_key
 from eth_account import Account
 
-# Importa as funções e variáveis do seu script onchain_dao
-# Certifique-se que o nome do módulo está correto (flower_fl.onchain_dao)
+# --- CORREÇÃO DE IMPORTAÇÃO ---
+# Importa o módulo 'onchain_dao' primeiro
 try:
-    from onchain_dao import (
-        register_requester,
-        register_trainer,
-        make_offer,
-        get_pending_offers,
-        accept_offer,
-        sign_job_contract,
-        w3,
-        acct
-    )
+    import onchain_dao
 except ImportError:
-    print("Erro: Não foi possível importar 'flower_fl.onchain_dao'.")
-    print("Certifique-se de que está executando o script do diretório raiz 'CriptoFL' (ex: python flower_fl/main.py)")
+    print("Erro: Não foi possível importar 'onchain_dao'.")
+    print("Certifique-se de que 'main.py' e 'onchain_dao.py' estão na mesma pasta.")
     sys.exit(1)
+
+# Agora importa as funções e variáveis específicas
+from onchain_dao import (
+    register_requester,
+    register_trainer,
+    make_offer,
+    get_pending_offers,
+    accept_offer,
+    sign_job_contract,
+    w3
+)
+
+# --- FIM DA CORREÇÃO ---
 
 # --- Endereços do seu 'npx hardhat node' ---
 ADDR_REQUESTER = "0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266"
@@ -28,13 +32,12 @@ KEY_REQUESTER = "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2f
 ADDR_TRAINER = "0x70997970c51812dc3a010c7d01b50e0d17dc79c8"
 KEY_TRAINER = "0x59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690d"
 
-# Valor total do Job (0.003 ETH)
-# (0.001 ETH por rodada * 3 rodadas)
 JOB_VALUE_WEI = w3.to_wei(0.003, "ether")
+acct = Account.from_key(os.getenv("PRIVATE_KEY"))  # Define a conta local
 
 
 def switch_env_user(private_key):
-    """Muda a PRIVATE_KEY no arquivo .env"""
+    """Muda a PRIVATE_KEY no arquivo .env E atualiza os módulos"""
     env_file = find_dotenv()
     if not env_file:
         print("!!! ERRO: Arquivo .env não encontrado.")
@@ -42,21 +45,20 @@ def switch_env_user(private_key):
 
     print(f"\n... Trocando usuário no .env para a chave: {private_key[:10]}...")
     set_key(env_file, "PRIVATE_KEY", private_key)
-    # Recarrega o .env nos módulos que o importam
     os.environ["PRIVATE_KEY"] = private_key
+
+    # --- CORREÇÃO CRÍTICA ---
+    # Atualiza a conta neste script E no módulo importado
     global acct
     acct = Account.from_key(private_key)
-    # Recarrega a conta no módulo onchain_dao
-    # from flower_fl import onchain_dao
-    # onchain_dao.acct = acct
+    onchain_dao.acct = acct  # <-- ESTA É A LINHA QUE CORRIGE O BUG
+    # --- FIM DA CORREÇÃO ---
 
     print(f"... Usuário trocado. Endereço ativo: {acct.address}")
     return True
 
 
 def parse_logs_for_job_address(logs):
-    """ Encontra o endereço do JobContract no log do evento JobContractCreated """
-    # O endereço do Job é o segundo tópico (topics[1]) do evento
     if logs:
         job_addr_raw = logs[0]['topics'][1].hex()
         job_addr = "0x" + job_addr_raw[-40:]
@@ -99,14 +101,15 @@ def run_all_phases():
     # --- Parte 4: Aceite do Treinador ---
     if not switch_env_user(KEY_TRAINER): return
     print(f"\n--- Parte 4: Ações do Treinador ({acct.address}) ---")
-    print("4. Buscando ofertas pendentes...")
-    offers = get_pending_offers()
-    if not offers:
+    print("4. Buscando IDs de ofertas pendentes...")
+    offer_ids = get_pending_offers()  # Deve funcionar agora
+    if not offer_ids:
         print("!!! ERRO: Nenhuma oferta encontrada.")
         return
 
-    offer_id = offers[0]  # O ID é o primeiro elemento da struct Offer
-    print(f"   -> Oferta {offer_id} encontrada.")
+    offer_id = offer_ids[0]
+    print(f"   -> ID de oferta {offer_id} encontrado.")
+
     print(f"5. Aceitando oferta {offer_id}...")
     r_accept = accept_offer(offer_id)
     print(f"   -> Tx: {r_accept['hash']}")
@@ -133,19 +136,18 @@ def run_all_phases():
 
     # --- Conclusão ---
     print("\n***********************************************")
-    print(">>> FASE 2 COMPLETA! JOB CRIADO E FINCIADO! <<<")
+    print(">>> FASE 2 COMPLETA! JOB CRIADO E FINANCIADO! <<<")
     print(f"O endereço do JobContract é: {job_address}")
     print("***********************************************")
 
     env_file = find_dotenv()
     set_key(env_file, "JOB_ADDRS", job_address)
     set_key(env_file, "JOB_ADDR", job_address)
-    # Deixa o .env pronto para o server/cliente (Conta #0)
     switch_env_user(KEY_REQUESTER)
 
     print("\n.env atualizado. Pronto para a FASE 3.")
-    print("No Terminal 2, rode: python flower_fl/server.py")
-    print("No Terminal 3, rode: python flower_fl/client.py")
+    print("No Terminal 2, rode: python -m flower_fl.server")
+    print("No Terminal 3, rode: python -m flower_fl.client")
 
 
 if __name__ == "__main__":
