@@ -28,10 +28,9 @@ contract Requester {
       _;
     }
 
-    constructor(address ownerAddress) {
+    constructor(address payable ownerAddress) {
         DAOManager    = msg.sender;
         owner         = ownerAddress;
-        // console.log("Requester: DAO =", DAOManager, "Owner=", owner); // Removido
     }
 
     function newContract(JobContract newJobContract) external onlyDAO {

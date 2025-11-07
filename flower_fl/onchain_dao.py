@@ -9,6 +9,8 @@ from eth_utils import keccak
 from deployments import resolve_address
 
 load_dotenv()
+
+
 RPC_URL = os.getenv("RPC_URL")
 PRIVATE_KEY = os.getenv("PRIVATE_KEY")
 DAO_ABI_PATH = os.getenv("DAO_ABI_PATH")
@@ -115,3 +117,7 @@ def accept_offer(offer_id: int):
 def sign_job_contract(job_addr: str, total_amount_wei: int = 0):
     fn = DAO.functions.signJobContract(Web3.to_checksum_address(job_addr))
     return _send(fn, value_wei=total_amount_wei)
+
+def get_offer_details(offer_id: int) -> tuple:
+    """ Busca os detalhes de uma oferta específica pelo ID """
+    return DAO.functions.getOfferDetails(offer_id).call()
