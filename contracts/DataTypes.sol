@@ -1,89 +1,61 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity ^0.8.0;
-import "hardhat/console.sol";
+pragma solidity ^0.8.20;
 
 library DataTypes {
-    enum Status { None,
-                  WaitingSignatures,
-                  WaitingTrainerSignature,
-                  WaitingRequesterSignature,
-                  Signed,
-                  Declined,
-                  Fulfilled }
-
-    function StatusToStr(Status status) public pure returns(string memory){
-        if (status == Status.WaitingSignatures){
-            return "WaitingSignatures";
-        }
-        if (status == Status.WaitingTrainerSignature){
-            return "WaitingTrainerSignature";
-        }
-        if (status == Status.WaitingRequesterSignature){
-            return "WaitingRequesterSignature";
-        }
-        if (status == Status.Signed){
-            return "Signed";
-        }
-        if (status == Status.Fulfilled){
-            return "Fulfilled";
-        }
-        if (status == Status.Declined){
-            return "Declined";
-        }
-        return "";
+    enum Status {
+        None,
+        WaitingSignatures,
+        WaitingTrainerSignature,
+        WaitingRequesterSignature,
+        Signed,
+        Declined,
+        Fulfilled
     }
 
     struct Evaluation {
         string comment;
-        int rating;
+        int256 rating;
+    }
+
+    struct UpdateRecord {
+        bytes32 cidHash;
+        address reporter;
+        bool approved;
+        bytes encryptedPointer;
+        uint256 timestamp;
+    }
+
+    struct GlobalModelRecord {
+        bytes32 cidHash;
+        bytes encryptedPointer;
+        uint256 round;
+        uint256 timestamp;
     }
 
     struct Specification {
         string processor;
         string ram;
-        string cpu;        
+        string cpu;
     }
 
     struct Offer {
         uint256 ID;
         string description;
-        string modelCID;
-        string serverEndpoint;
+        bytes32 modelCIDHash;
+        bytes32 serverEndpointHash;
+        bytes encryptedMetadata;
         uint256 valueByUpdate;
-        uint256 numberOfUpdates;        
+        uint256 numberOfUpdates;
         address offerMaker;
-        address trainer; 
-        //Talvez adicionar algum tipo de prazo limit de aceitação.
+        address trainer;
     }
-    
+
     struct JobRequirements {
         string description;
-        uint256 valueByUpdate;   //Valor maximo que o Requisitante está disposto a pagar por update
-        uint256 minRating;          //Rating minimo que um candidato deve ter
-        string[] tags;          //Tags que devem estar inclusas nas tags dos candidatos
-        uint256 canditatesToReturn; //Numero maximo de candindatos a serem retornados. Que serão selecionados manualmente.
+        uint256 valueByUpdate;
+        uint256 minRating;
+        string[] tags;
+        uint256 canditatesToReturn;
     }
 }
 
-library Log {
-    // FUNÇÕES AUXILIARES
-    function Requirement(DataTypes.JobRequirements memory Requirements) view internal {
-        console.log("Description =", Requirements.description);
-        console.log("CandidatesToReturn =", Requirements.canditatesToReturn);
-        console.log("ValueByUpdate =", Requirements.valueByUpdate);
-        console.log("MinRating =", Requirements.minRating);
-        
-        for (uint i=0; i < Requirements.tags.length; i++) {
-            console.log("Tag =", Requirements.tags[i], i);
-        }
-    }
-
-    function Offer(DataTypes.Offer memory offer) public view {
-        console.log("ID =", offer.ID);
-        console.log("Decription =", offer.description);
-        console.log("ModelCID =", offer.modelCID);
-        console.log("ValueByUpdate =", offer.valueByUpdate);
-        console.log("numberOfUpdates =", offer.numberOfUpdates);
-        console.log("OfferMaker =", offer.offerMaker);   
-    }
-}

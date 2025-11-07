@@ -1,18 +1,16 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity ^0.8.0;
-import "@openzeppelin/contracts/utils/Counters.sol";
-import "@openzeppelin/contracts/utils/structs/EnumerableMap.sol";
-import "hardhat/console.sol";
+pragma solidity ^0.8.20;
 import "./DataTypes.sol";
 import "./JobContract.sol";
 
 contract Trainer {
     string   public      description;   // Descrição texto livre do treinador
     string[] public      tags;          // Lista de tags do treinador.
-    int      public      rating;                     //TODO: sum(evaluations[])/count(evaluations) 
+    uint256  public      rating;
     DataTypes.Evaluation[]  public  evaluations;    // List of received evaluation
     DataTypes.Specification public  specification; // Specifications of the trainer.
     string public dataPreviewCID;
+    uint256 public pricePerUpdate;
    
     uint256[] internal pendingOffersIDs;      
     mapping(uint256 => DataTypes.Offer) private pendingOffers; //<offerID, Offer> Ofertas de trabalho que o treinador tem.
@@ -23,15 +21,16 @@ contract Trainer {
     address public owner;                           // Endereço da carteira do Trainer
     address public DAO;                      // DAO é o endereço do contrato que faz o gerenciamento da DAO
     
+    uint256 private evaluationCount;
+    uint256 private cumulativeScore;
+
     constructor(address ownerAddress, string memory _description, DataTypes.Specification memory _specification) {
         DAO    = msg.sender;
         owner         = ownerAddress;
         description   = _description;
         specification = _specification;
         rating        = 10; //Todos treinadores começam com nota maxima
-
-        console.log("Trainer: DAO =", DAO, "Owner=", owner);
-    }    
+    }
 
     modifier onlyOwner {
       require(msg.sender == owner,  "Only owner");
@@ -51,19 +50,15 @@ contract Trainer {
         tags = _tags;
     }
 
+    function setPricePerUpdate(uint256 price) external onlyOwner {
+        pricePerUpdate = price;
+    }
+
     function newOffer(DataTypes.Offer memory offer) external onlyDAO {
-        console.log("newOffer: from", offer.offerMaker);
-        
-        Log.Offer(offer);
         insertOffer(offer);
-        
-        console.log("Trainer: DAO =", DAO, "Owner=", owner);
     }
 
     function newContract(JobContract job) external onlyDAO {
-        console.log("newContract: ", owner);
-        
-        job.LogContract();
         insertContract(job);
     }
 
@@ -95,19 +90,29 @@ contract Trainer {
         return (pendingOffers[offerID].trainer != address(0));
     }
 
+    function getProfile() external view returns (uint256, string[] memory, DataTypes.Specification memory, uint256) {
+        return (rating, tags, specification, pricePerUpdate);
+    }
+
+    function recordEvaluation(int256 score, string calldata comment) external onlyDAO {
+        require(score >= 0 && score <= 10, "Score out of bounds");
+
+        evaluations.push(DataTypes.Evaluation({comment: comment, rating: score}));
+        cumulativeScore += uint256(int256(score));
+        evaluationCount += 1;
+
+        rating = cumulativeScore / evaluationCount;
+    }
+
     //FUNÇÕES AUXILIARES
     function insertOffer(DataTypes.Offer memory offer) internal {
         pendingOffers[offer.ID] = offer;
         pendingOffersIDs.push(offer.ID);
-
-        console.log("insertOffer:" , offer.ID, " Count pending offers =", pendingOffersIDs.length);
     }
 
     function insertContract(JobContract job) internal {
         jobContracts[address(job)] = job;
         jobsAddress.push(address(job));
-
-        console.log("insertContract:" ,address(job), " Count jobContracts =", jobsAddress.length);
     }
 
     function deleteOffer(uint256 offerID) internal {
@@ -130,12 +135,7 @@ contract Trainer {
 
 
             //Deleta a oferta do mapping
-            delete pendingOffers[idxOffer];
-
-            console.log("deleteOffer:" , offerID, idxOffer, pendingOffersIDs.length);
-        }
-        else {
-            console.log("deleteOffer:" , offerID, "Not found");
+            delete pendingOffers[offerID];
         }
     }
 }
