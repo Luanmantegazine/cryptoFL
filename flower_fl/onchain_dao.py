@@ -10,7 +10,6 @@ from deployments import resolve_address
 
 load_dotenv()
 
-
 RPC_URL = os.getenv("RPC_URL")
 PRIVATE_KEY = os.getenv("PRIVATE_KEY")
 DAO_ABI_PATH = os.getenv("DAO_ABI_PATH")
@@ -29,6 +28,9 @@ def _abi(path: str):
     return data["abi"] if isinstance(data, dict) and "abi" in data else data
 
 
+# ✅ Guarde o ABI numa variável global para reusar nos decoders de eventos
+DAO_ABI = _abi(DAO_ABI_PATH)
+
 DAO_ADDRESS = resolve_address(
     os.getenv("DAO_ADDRESS"),
     w3,
@@ -39,10 +41,11 @@ DAO_ADDRESS = resolve_address(
 
 DAO = w3.eth.contract(
     address=Web3.to_checksum_address(DAO_ADDRESS),
-    abi=_abi(DAO_ABI_PATH),
+    abi=DAO_ABI,
 )
 
 ZERO_ADDRESS = "0x0000000000000000000000000000000000000000"
+
 
 def _send(fn, value_wei: int = 0) -> Dict[str, Any]:
     nonce = w3.eth.get_transaction_count(acct.address)
@@ -71,27 +74,20 @@ def _send(fn, value_wei: int = 0) -> Dict[str, Any]:
         "logs": rcpt.logs,
     }
 
-# --- DAO calls ---
+
+# --- DAO calls (mantidos) ---
 
 def register_requester():
-    fn = DAO.functions.registerRequester()
-    return _send(fn)
+    return _send(DAO.functions.registerRequester())
+
 
 def register_trainer(description: str, specification: Tuple):
-    """
-    specification deve seguir o layout de DataTypes.Specification do seu contrato.
-    Ex.: (datasetSize, processor, ram, cpu, tagsArray)
-    Ajuste a tupla conforme o struct real.
-    """
-    fn = DAO.functions.registerTrainer(description, specification)
-    return _send(fn)
+    return _send(DAO.functions.registerTrainer(description, specification))
+
 
 def match_trainers(job_requirements: Tuple) -> List[str]:
-    """
-    job_requirements = tupla no formato do seu DataTypes.JobRequirements.
-    Retorna array de addresses.
-    """
     return DAO.functions.matchTrainers(job_requirements).call()
+
 
 def make_offer(description: str, model_cid: str, value_by_update_wei: int,
                number_of_updates: int, trainer_addr: str, server_endpoint: str,
@@ -109,27 +105,101 @@ def make_offer(description: str, model_cid: str, value_by_update_wei: int,
     )
     return _send(fn)
 
-def get_pending_offers() -> list:
-    return DAO.functions.getPendingOffers().call()
+
+def get_pending_offer_ids_for(trainer_owner_addr: str):
+    # ⚠️ Só funcione se existir MESMO no ABI do DAO!
+    return DAO.functions.getPendingOfferIdsFor(
+        Web3.to_checksum_address(trainer_owner_addr)
+    ).call()
+
 
 def accept_offer(offer_id: int):
-    fn = DAO.functions.AcceptOffer(offer_id)
-    return _send(fn)
+    return _send(DAO.functions.AcceptOffer(int(offer_id)))
+
 
 def sign_job_contract(job_addr: str, total_amount_wei: int = 0):
-    fn = DAO.functions.signJobContract(Web3.to_checksum_address(job_addr))
-    return _send(fn, value_wei=total_amount_wei)
+    return _send(DAO.functions.signJobContract(Web3.to_checksum_address(job_addr)), value_wei=total_amount_wei)
 
-def get_offer_details(offer_id: int) -> tuple:
-    """ Busca os detalhes de uma oferta específica pelo ID """
-    return DAO.functions.getOfferDetails(offer_id).call()
+
+def get_offer_details(offer_id: int):
+    return DAO.functions.getOfferDetailsFor(acct.address, int(offer_id)).call({"from": acct.address})
 
 
 def get_requester_contract(account: str) -> str:
-    """Retorna o contrato do requester para o address informado ou ZERO_ADDRESS."""
     return DAO.functions.requesters(Web3.to_checksum_address(account)).call()
 
 
 def get_trainer_contract(account: str) -> str:
-    """Retorna o contrato do trainer para o address informado ou ZERO_ADDRESS."""
     return DAO.functions.trainers(Web3.to_checksum_address(account)).call()
+
+
+def _find_event_abi_by_name_prefix(prefix: str):
+    pref = prefix.lower()
+    for item in DAO_ABI:
+        if item.get("type") == "event" and item.get("name", "").lower().startswith(pref):
+            return item
+    return None
+
+
+def _iter_event_decoders_from_abi(abi):
+    """Cria decoders para TODOS os eventos do ABI."""
+    decoders = []
+    for item in abi:
+        if item.get("type") == "event":
+            tmp = w3.eth.contract(abi=[item])
+            decoders.append(tmp.events[item["name"]])
+    return decoders
+
+
+def extract_offer_id_from_logs(logs) -> int | None:
+    """
+    Tenta decodificar o ID de oferta a partir de qualquer evento emitido pelo DAO
+    na tx de MakeOffer. Heurísticas:
+      1) usar campos chamados 'id', 'offerId', 'offerID', 'offer_id';
+      2) se não achar, pegar o primeiro inteiro não-negativo dos args;
+      3) se ainda não achar, tentar tópicos não-endereço como uint.
+    """
+    # garanta que você tem `DAO_ABI` global carregado no módulo
+    decoders = _iter_event_decoders_from_abi(DAO.abi)
+
+    # 1) decodifica eventos pelo ABI
+    for log in logs:
+        if log.get("address", "").lower() != DAO.address.lower():
+            continue
+        for dec in decoders:
+            try:
+                ev = dec().process_log(log)
+                args = ev["args"]
+                # nomes “óbvios”
+                for key in ("id", "offerId", "offerID", "offer_id"):
+                    if key in args and isinstance(args[key], int) and args[key] >= 0:
+                        return int(args[key])
+                # senão: primeiro int não-negativo
+                for k, v in args.items():
+                    if isinstance(v, int) and v >= 0:
+                        return int(v)
+            except Exception:
+                pass
+
+    # 2) fallback bruto: tenta extrair uint dos tópicos (se o id for indexed)
+    from eth_utils import big_endian_to_int
+    ZERO_ADDR_TOPIC_PREFIX = "0x000000000000000000000000"
+
+    for log in logs:
+        if log.get("address", "").lower() != DAO.address.lower():
+            continue
+        topics = [t.hex() if hasattr(t, "hex") else str(t) for t in log.get("topics", [])]
+        # topics[0] é o keccak do evento; os demais podem trazer indexed params.
+        for t in topics[1:]:
+            # ignorar se parecer endereço (tem o prefixo de 12 bytes zeros + 20 bytes address)
+            if t.startswith(ZERO_ADDR_TOPIC_PREFIX) and len(t) == 66:
+                # é um endereço indexado, ignore
+                continue
+            try:
+                val = big_endian_to_int(bytes.fromhex(t[2:]))
+                if val >= 0:
+                    return int(val)
+            except Exception:
+                pass
+
+    return None
