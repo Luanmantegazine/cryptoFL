@@ -8,15 +8,16 @@ import "./Requester.sol";
 import "./Trainer.sol";
 import "./JobContract.sol";
 
+event OfferMade(uint256 indexed offerId, address indexed requester, address indexed trainer);
 event JobContractCreated(address indexed job, uint256 indexed offerId, address indexed requester, address trainer);
 
 contract DAO {
     using Counters for Counters.Counter;
 
-    mapping(address => address) trainers;
+    mapping(address => address) public trainers;
     address[] public registeredTrainers;
 
-    mapping(address => address) requesters;
+    mapping(address => address) public requesters;
     address[] public registeredRequesters;
 
     mapping(address => JobContract) jobContracts;
@@ -136,6 +137,8 @@ contract DAO {
         offer.trainer         = trainerWallet;
 
         trainer.newOffer(offer);
+
+        emit OfferMade(offer.ID, msg.sender, trainerWallet);
     }
 
     function getPendingOffers() external view returns(uint256 [] memory) {

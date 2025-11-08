@@ -1,10 +1,9 @@
 import sys
 import os
-from dotenv import load_dotenv, find_dotenv, set_key
+from dotenv import  find_dotenv, set_key
 from eth_account import Account
+from onchain_dao import extract_offer_id_from_logs
 
-# --- CORREÇÃO DE IMPORTAÇÃO ---
-# Importa o módulo 'onchain_dao' primeiro
 try:
     import onchain_dao
 except ImportError:
@@ -12,12 +11,10 @@ except ImportError:
     print("Certifique-se de que 'main.py' e 'onchain_dao.py' estão na mesma pasta.")
     sys.exit(1)
 
-# Agora importa as funções e variáveis específicas
 from onchain_dao import (
     register_requester,
     register_trainer,
     make_offer,
-    get_pending_offers,
     accept_offer,
     sign_job_contract,
     w3,
@@ -25,8 +22,6 @@ from onchain_dao import (
     get_trainer_contract,
     ZERO_ADDRESS,
 )
-
-# --- FIM DA CORREÇÃO ---
 
 # --- Endereços do seu 'npx hardhat node' ---
 ADDR_REQUESTER = "0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266"
@@ -36,11 +31,10 @@ ADDR_TRAINER = "0x70997970c51812dc3a010c7d01b50e0d17dc79c8"
 KEY_TRAINER = "0x59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690d"
 
 JOB_VALUE_WEI = w3.to_wei(0.003, "ether")
-acct = Account.from_key(os.getenv("PRIVATE_KEY"))  # Define a conta local
+acct = Account.from_key(os.getenv("PRIVATE_KEY"))
 
 
 def switch_env_user(private_key):
-    """Muda a PRIVATE_KEY no arquivo .env E atualiza os módulos"""
     env_file = find_dotenv()
     if not env_file:
         print("!!! ERRO: Arquivo .env não encontrado.")
@@ -50,12 +44,9 @@ def switch_env_user(private_key):
     set_key(env_file, "PRIVATE_KEY", private_key)
     os.environ["PRIVATE_KEY"] = private_key
 
-    # --- CORREÇÃO CRÍTICA ---
-    # Atualiza a conta neste script E no módulo importado
     global acct
     acct = Account.from_key(private_key)
-    onchain_dao.acct = acct  # <-- ESTA É A LINHA QUE CORRIGE O BUG
-    # --- FIM DA CORREÇÃO ---
+    onchain_dao.acct = acct
 
     print(f"... Usuário trocado. Endereço ativo: {acct.address}")
     return True
@@ -109,36 +100,34 @@ def run_all_phases():
     )
     print(f"   -> Tx: {r_offer['hash']}")
 
+    offer_id = extract_offer_id_from_logs(r_offer["logs"])
+    if offer_id is None:
+        print("!!! ERRO: Não consegui extrair o offerId dos eventos do DAO. Vamos inspecionar os logs:")
+        for i, lg in enumerate(r_offer["logs"]):
+            print(
+                f"- Log[{i}] addr={lg['address']} topics={[t.hex() if hasattr(t, 'hex') else t for t in lg['topics']]} data={lg['data']}")
+        return
+    print(f"   -> offerId = {offer_id}")
+
     # --- Parte 4: Aceite do Treinador ---
     if not switch_env_user(KEY_TRAINER): return
     print(f"\n--- Parte 4: Ações do Treinador ({acct.address}) ---")
-    print("4. Buscando IDs de ofertas pendentes...")
-    offer_ids = get_pending_offers()  # Deve funcionar agora
-    if not offer_ids:
-        print("!!! ERRO: Nenhuma oferta encontrada.")
-        return
-
-    offer_id = offer_ids[0]
-    print(f"   -> ID de oferta {offer_id} encontrado.")
-
     print(f"5. Aceitando oferta {offer_id}...")
-    r_accept = accept_offer(offer_id)
+    r_accept = accept_offer(int(offer_id))
     print(f"   -> Tx: {r_accept['hash']}")
 
     job_address = parse_logs_for_job_address(r_accept['logs'])
     if not job_address:
-        print("!!! ERRO: Não foi possível encontrar o endereço do JobContract!")
+        print("!!! ERRO: Não foi possível encontrar o endereço do JobContract nos logs de AcceptOffer!")
         return
     print(f"   -> JobContract criado em: {job_address}")
 
-    # --- Parte 5: Financiamento do Job (Requisitante) ---
     if not switch_env_user(KEY_REQUESTER): return
     print(f"\n--- Parte 5: Financiamento do Job ({acct.address}) ---")
     print(f"6. Assinando e depositando {w3.from_wei(JOB_VALUE_WEI, 'ether')} ETH no Job...")
     r_sign_requester = sign_job_contract(job_address, total_amount_wei=JOB_VALUE_WEI)
     print(f"   -> Tx: {r_sign_requester['hash']}")
 
-    # --- Parte 6: Assinatura do Job (Treinador) ---
     if not switch_env_user(KEY_TRAINER): return
     print(f"\n--- Parte 6: Assinatura final do Job ({acct.address}) ---")
     print(f"7. Treinador assinando o Job...")
