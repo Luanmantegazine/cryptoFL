@@ -58,10 +58,7 @@ contract DAO {
         while ((candidatesCount < Requirements.canditatesToReturn) && (i < registeredTrainers.length)) {
             address trainerAddr = registeredTrainers[i];
 
-            // --- INÍCIO DA CORREÇÃO HHE910 ---
-            // Convertemos o 'address' para 'payable' antes de converter para o tipo 'Trainer'
             Trainer trainer = Trainer(payable(trainers[trainerAddr]));
-            // --- FIM DA CORREÇÃO ---
 
             if (isMatch(Requirements, trainer)) {
                 candidates[candidatesCount] = trainerAddr;

@@ -109,7 +109,6 @@ def run_all_phases():
         return
     print(f"   -> offerId = {offer_id}")
 
-    # --- Parte 4: Aceite do Treinador ---
     if not switch_env_user(KEY_TRAINER): return
     print(f"\n--- Parte 4: Ações do Treinador ({acct.address}) ---")
     print(f"5. Aceitando oferta {offer_id}...")
@@ -134,7 +133,6 @@ def run_all_phases():
     r_sign_trainer = sign_job_contract(job_address, total_amount_wei=0)
     print(f"   -> Tx: {r_sign_trainer['hash']}")
 
-    # --- Conclusão ---
     print("\n***********************************************")
     print(">>> FASE 2 COMPLETA! JOB CRIADO E FINANCIADO! <<<")
     print(f"O endereço do JobContract é: {job_address}")

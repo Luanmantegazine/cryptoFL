@@ -2,7 +2,6 @@
 pragma solidity ^0.8.20;
 
 import "@openzeppelin/contracts/utils/Counters.sol";
-// import "hardhat/console.sol"; // Removido
 
 import "./DataTypes.sol";
 import "./JobContract.sol";
@@ -34,14 +33,11 @@ contract Requester {
     }
 
     function newContract(JobContract newJobContract) external onlyDAO {
-        // console.log("newContract: ", owner); // Removido
-        // newJobContract.LogContract(); // Removido
         insertContract(newJobContract);
     }
 
     function insertContract(JobContract newJobContract) internal {
         jobContracts[address(newJobContract)] = newJobContract;
         jobsAddress.push(address(newJobContract));
-        // console.log("insertContract:" ,address(newJobContract), " Count jobContracts =", jobsAddress.length); // Removido
     }
 }
