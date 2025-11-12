@@ -1,6 +1,5 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.20;
-// import "hardhat/console.sol"; // REMOVIDO
 
 library DataTypes {
     enum Status { None,
@@ -64,5 +63,3 @@ library DataTypes {
         uint256 canditatesToReturn;
     }
 }
-
-// library Log REMOVIDA

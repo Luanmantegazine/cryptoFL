@@ -28,7 +28,6 @@ def _abi(path: str):
     return data["abi"] if isinstance(data, dict) and "abi" in data else data
 
 
-# ✅ Guarde o ABI numa variável global para reusar nos decoders de eventos
 DAO_ABI = _abi(DAO_ABI_PATH)
 
 DAO_ADDRESS = resolve_address(
@@ -107,7 +106,6 @@ def make_offer(description: str, model_cid: str, value_by_update_wei: int,
 
 
 def get_pending_offer_ids_for(trainer_owner_addr: str):
-    # ⚠️ Só funcione se existir MESMO no ABI do DAO!
     return DAO.functions.getPendingOfferIdsFor(
         Web3.to_checksum_address(trainer_owner_addr)
     ).call()
@@ -159,10 +157,9 @@ def extract_offer_id_from_logs(logs) -> int | None:
       2) se não achar, pegar o primeiro inteiro não-negativo dos args;
       3) se ainda não achar, tentar tópicos não-endereço como uint.
     """
-    # garanta que você tem `DAO_ABI` global carregado no módulo
+
     decoders = _iter_event_decoders_from_abi(DAO.abi)
 
-    # 1) decodifica eventos pelo ABI
     for log in logs:
         if log.get("address", "").lower() != DAO.address.lower():
             continue
@@ -170,18 +167,15 @@ def extract_offer_id_from_logs(logs) -> int | None:
             try:
                 ev = dec().process_log(log)
                 args = ev["args"]
-                # nomes “óbvios”
                 for key in ("id", "offerId", "offerID", "offer_id"):
                     if key in args and isinstance(args[key], int) and args[key] >= 0:
                         return int(args[key])
-                # senão: primeiro int não-negativo
                 for k, v in args.items():
                     if isinstance(v, int) and v >= 0:
                         return int(v)
             except Exception:
                 pass
 
-    # 2) fallback bruto: tenta extrair uint dos tópicos (se o id for indexed)
     from eth_utils import big_endian_to_int
     ZERO_ADDR_TOPIC_PREFIX = "0x000000000000000000000000"
 
@@ -189,11 +183,8 @@ def extract_offer_id_from_logs(logs) -> int | None:
         if log.get("address", "").lower() != DAO.address.lower():
             continue
         topics = [t.hex() if hasattr(t, "hex") else str(t) for t in log.get("topics", [])]
-        # topics[0] é o keccak do evento; os demais podem trazer indexed params.
         for t in topics[1:]:
-            # ignorar se parecer endereço (tem o prefixo de 12 bytes zeros + 20 bytes address)
             if t.startswith(ZERO_ADDR_TOPIC_PREFIX) and len(t) == 66:
-                # é um endereço indexado, ignore
                 continue
             try:
                 val = big_endian_to_int(bytes.fromhex(t[2:]))

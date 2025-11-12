@@ -1,7 +1,3 @@
-"""Utilities para descobrir endereços de contratos implantados."""
-
-from __future__ import annotations
-
 import json
 import os
 from pathlib import Path
@@ -52,7 +48,6 @@ def discover_contract_address(
     deployments_dir: str | os.PathLike[str] = "deployments",
     ignition_dir: str | os.PathLike[str] = "ignition/deployments",
 ) -> Optional[str]:
-    """Procura arquivos de deployment padrão e tenta extrair o endereço."""
 
     search_paths = []
     base = Path(deployments_dir)
@@ -92,7 +87,6 @@ def resolve_address(
     deployments_dir: str | os.PathLike[str] = "deployments",
     ignition_dir: str | os.PathLike[str] = "ignition/deployments",
 ) -> str:
-    """Retorna o endereço do contrato (variável de ambiente ou arquivos locais)."""
 
     if explicit and Web3.is_address(explicit) and not _is_zero(explicit):
         return Web3.to_checksum_address(explicit)

@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.20;
 
-// import "hardhat/console.sol"; // Removido
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 
 import "./DataTypes.sol";
@@ -69,12 +68,7 @@ contract JobContract is ReentrancyGuard {
         availableAmount = 0;
         withdrawAmount = 0;
         Status = DataTypes.Status.WaitingSignatures;
-        // console.log("JobContract : Trainer = ", trainer, offerMaker); // Removido
     }
-
-    // function LogContract() public view { // Removido
-        // ...
-    // }
 
     function totalAmount() public view returns (uint256) {
         return (valueByUpdate * numberOfUpdates);
@@ -102,7 +96,7 @@ contract JobContract is ReentrancyGuard {
         emit ClientUpdateRecorded(cidHash, msg.sender, updatesDone, availableAmount, encryptedCid);
     }
 
-    function publishGlobalModel(bytes32 cidHash, bytes calldata encryptedCid) external onlyDAO {
+    function publishGlobalModel(bytes32 cidHash, bytes calldata encryptedCid) external onlyAuthorizedReporter {
         latestModelHash = cidHash;
         emit GlobalModelUpdated(cidHash, updatesDone, encryptedCid);
     }
@@ -126,7 +120,6 @@ contract JobContract is ReentrancyGuard {
     }
 
     function sign(address signer) public onlyDAO {
-        // console.log("sign: Signer =", signer, trainer, offerMaker); // Removido
         require(
             (Status != DataTypes.Status.Signed), "JobContract already signed"
             );

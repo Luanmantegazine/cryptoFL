@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.20;
 import "@openzeppelin/contracts/utils/Counters.sol";
-// import "hardhat/console.sol"; // Removido
 import "./DataTypes.sol";
 import "./JobContract.sol";
 
@@ -49,15 +48,10 @@ contract Trainer {
     }
 
     function newOffer(DataTypes.Offer memory offer) external onlyDAO {
-        // console.log("newOffer: from", offer.offerMaker); // Removido
-        // Log.Offer(offer); // Removido
         insertOffer(offer);
-        // console.log("Trainer: DAO =", DAO, "Owner=", owner); // Removido
     }
 
     function newContract(JobContract job) external onlyDAO {
-        // console.log("newContract: ", owner); // Removido
-        // job.LogContract(); // Removido
         insertContract(job);
     }
 
@@ -71,8 +65,7 @@ contract Trainer {
     }
 
    function getPendingOffers() external view onlyDAO returns(uint256 [] memory) {
-    // O loop antigo foi removido
-    return pendingOffersIDs; // Retorna apenas os IDs
+    return pendingOffersIDs;
     }
 
     function containsOffer(uint256 offerID) public view returns (bool){
@@ -116,10 +109,6 @@ contract Trainer {
             pendingOffersIDs[idxOffer] = pendingOffersIDs[pendingOffersIDs.length-1];
             pendingOffersIDs.pop();
             delete pendingOffers[offerID];
-            // console.log("deleteOffer:" , offerID, idxOffer, pendingOffersIDs.length); // Removido
         }
-        // else {
-            // console.log("deleteOffer:" , offerID, "Not found"); // Removido
-        // }
     }
 }

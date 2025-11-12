@@ -40,9 +40,9 @@ async function main() {
   const payload = {
     dao: contractAddress,
     chainId: Number(chain),
-    network: connection.networkName, // Corrigido
+    network: connection.networkName,
     deployer: wallet.account.address,
-    transactionHash: transactionHash ?? "N/A", // Corrigido
+    transactionHash: transactionHash ?? "N/A",
     timestamp: new Date().toISOString(),
   };
 
