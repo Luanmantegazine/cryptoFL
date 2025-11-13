@@ -3,7 +3,6 @@ from torchvision import datasets, transforms
 
 
 def load_mnist(node_id, num_nodes=3):
-
     transform = transforms.Compose([
         transforms.ToTensor(),
         transforms.Normalize((0.1307,), (0.3081,))
@@ -17,8 +16,7 @@ def load_mnist(node_id, num_nodes=3):
         './data', train=False, download=True, transform=transform
     )
 
-    # ========== PARTICIONAMENTO IID ==========
-    total_train = 1000  # 60000
+    total_train = len(train_dataset)  # 60000
     partition_size = total_train // num_nodes
 
     start_idx = node_id * partition_size
@@ -36,6 +34,7 @@ def load_mnist(node_id, num_nodes=3):
 
     print(f"[Dataset] Node {node_id}: índices {start_idx}-{end_idx} ({len(train_subset)} amostras)")
 
+    # DataLoaders SEM workers (evita fork)
     trainloader = torch.utils.data.DataLoader(
         train_subset,
         batch_size=32,
