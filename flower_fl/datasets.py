@@ -1,45 +1,55 @@
-from torch.utils.data import DataLoader, Subset
+import torch
 from torchvision import datasets, transforms
 
 
-def load_mnist(node_id: int, num_nodes: int):
+def load_mnist(node_id, num_nodes=3):
 
     transform = transforms.Compose([
         transforms.ToTensor(),
         transforms.Normalize((0.1307,), (0.3081,))
     ])
 
-    # Baixa o dataset de treino
-    try:
-        train_data = datasets.MNIST(
-            root="./data",
-            train=True,
-            download=True,
-            transform=transform
-        )
-    except Exception as e:
-        print(f"Falha ao baixar MNIST. Verifique a conexão. Erro: {e}")
-        # Tenta carregar localmente se já baixado
-        train_data = datasets.MNIST(
-            root="./data",
-            train=True,
-            download=False,
-            transform=transform
-        )
+    # Download dataset
+    train_dataset = datasets.MNIST(
+        './data', train=True, download=True, transform=transform
+    )
+    test_dataset = datasets.MNIST(
+        './data', train=False, download=True, transform=transform
+    )
 
-    # Particiona o dataset
-    total_size = len(train_data)
-    indices = list(range(total_size))
-    # Divide os índices em 'num_nodes' partes
-    partition_size = total_size // num_nodes
-    start = node_id * partition_size
-    # Garante que o último cliente pegue o restante
+    # ========== PARTICIONAMENTO IID ==========
+    total_train = 1000  # 60000
+    partition_size = total_train // num_nodes
+
+    start_idx = node_id * partition_size
+    end_idx = start_idx + partition_size
+
+    # Último node pega o resto
     if node_id == num_nodes - 1:
-        end = total_size
-    else:
-        end = (node_id + 1) * partition_size
+        end_idx = total_train
 
-    client_indices = indices[start:end]
-    client_dataset = Subset(train_data, client_indices)
+    # Criar subset
+    train_subset = torch.utils.data.Subset(
+        train_dataset,
+        list(range(start_idx, end_idx))
+    )
 
-    return DataLoader(client_dataset, batch_size=32, shuffle=True)
+    print(f"[Dataset] Node {node_id}: índices {start_idx}-{end_idx} ({len(train_subset)} amostras)")
+
+    trainloader = torch.utils.data.DataLoader(
+        train_subset,
+        batch_size=32,
+        shuffle=True,
+        num_workers=0,
+        pin_memory=False
+    )
+
+    testloader = torch.utils.data.DataLoader(
+        test_dataset,
+        batch_size=32,
+        shuffle=False,
+        num_workers=0,
+        pin_memory=False
+    )
+
+    return trainloader, testloader

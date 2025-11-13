@@ -15,6 +15,7 @@ def run_experiment():
     print("\n--- FASE 2: Criando Job ---")
     subprocess.run(["python", "deploy-job.py"])
 
+    # Iniciar servidor
     print("\n--- FASE 3: Iniciando Servidor Flower ---")
     server_log = open("server.log", "w")
     server = subprocess.Popen(
@@ -22,6 +23,7 @@ def run_experiment():
         stdout=server_log,
         stderr=subprocess.STDOUT
     )
+    print("Aguardando 15s para o servidor iniciar...")
     time.sleep(15)
 
     # Iniciar 3 clientes
@@ -33,7 +35,7 @@ def run_experiment():
         print(f"Iniciando cliente {i}...")
         log_file = open(f"client_{i}.log", "w")
         client = subprocess.Popen(
-            ["python", "client.py", "--node-id", str(i), "--num-nodes", str(num_clients)],
+            ["python", "client.py"],
             stdout=log_file,
             stderr=subprocess.STDOUT
         )
