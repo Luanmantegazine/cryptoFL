@@ -1,14 +1,13 @@
-# flower_fl/client.py
 import flwr as fl
 import os
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
-# Importações relativas
-from models import MNISTNet
-from datasets import load_mnist
-from ipfs import ipfs_get_numpy, ipfs_add_numpy
-from onchain_job import job_send_update
+
+
+from .models import MNISTNet
+from .datasets import load_mnist
+from .ipfs import ipfs_get_numpy, ipfs_add_numpy
+from .onchain_job import job_send_update
 
 JOB_ADDR = os.getenv("JOB_ADDR")
 assert JOB_ADDR, "JOB_ADDR não encontrado no .env"
@@ -100,9 +99,12 @@ class MNISTClient(fl.client.NumPyClient):
 
 
 if __name__ == "__main__":
-    NODE_ID = 0
-    NUM_NODES = 1
+    NODE_ID = int(os.getenv("NODE_ID", "0"))
+    NUM_NODES = int(os.getenv("NUM_NODES", "10"))
 
-    print(f"[Cliente {NODE_ID}] Iniciando...")
+    print(f"\n{'=' * 70}")
+    print(f" CLIENTE {NODE_ID}/{NUM_NODES - 1}")
+    print(f"{'=' * 70}\n")
+
     client = MNISTClient(node_id=NODE_ID, num_nodes=NUM_NODES).to_client()
     fl.client.start_client(server_address="0.0.0.0:8080", client=client)
