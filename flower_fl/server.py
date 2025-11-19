@@ -1,6 +1,5 @@
 import os
 
-# Configurações de ambiente para gRPC
 os.environ["GRPC_POLL_STRATEGY"] = "poll"
 os.environ["GRPC_ENABLE_FORK_SUPPORT"] = "1"
 
@@ -12,11 +11,10 @@ from pathlib import Path
 import flwr as fl
 from flwr.common import parameters_to_ndarrays
 
-# Importações relativas
-from models import MNISTNet
-from onchain_job import job_update_global
-from ipfs import ipfs_add_numpy
-from utils import ROUNDS, init_weights
+from .models import MNISTNet
+from .onchain_job import job_update_global
+from .ipfs import ipfs_add_numpy
+from .utils import ROUNDS
 
 # Configurações
 JOB_ADDRS = [x.strip() for x in os.getenv("JOB_ADDRS", "").split(",") if x.strip()]
