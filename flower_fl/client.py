@@ -100,7 +100,7 @@ class MNISTClient(fl.client.NumPyClient):
 
 if __name__ == "__main__":
     NODE_ID = int(os.getenv("NODE_ID", "0"))
-    NUM_NODES = int(os.getenv("NUM_NODES", "10"))
+    NUM_NODES = int(os.getenv("NUM_NODES", "3"))
 
     print(f"\n{'=' * 70}")
     print(f" CLIENTE {NODE_ID}/{NUM_NODES - 1}")
