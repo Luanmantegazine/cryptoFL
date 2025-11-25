@@ -2,12 +2,13 @@ import flwr as fl
 import os
 import torch
 import torch.nn as nn
-
+import time
 
 from .models import MNISTNet
 from .datasets import load_mnist
 from .ipfs import ipfs_get_numpy, ipfs_add_numpy
 from .onchain_job import job_send_update
+
 
 JOB_ADDR = os.getenv("JOB_ADDR")
 assert JOB_ADDR, "JOB_ADDR não encontrado no .env"
@@ -20,8 +21,6 @@ class MNISTClient(fl.client.NumPyClient):
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
         print(f"[Cliente {node_id}] Carregando dados...")
-
-        # ✅ CORREÇÃO: Desempacota os DOIS loaders retornados
         self.trainloader, self.testloader = load_mnist(node_id, num_nodes)
 
         print(f"[Cliente {node_id}] Treino: {len(self.trainloader.dataset)} amostras")
@@ -33,8 +32,6 @@ class MNISTClient(fl.client.NumPyClient):
             print(f"[Cliente {self.node_id}] Baixando modelo global: {cid}")
             params = ipfs_get_numpy(cid)
             self.set_parameters(params)
-        else:
-            print(f"[Cliente {self.node_id}] Enviando parâmetros iniciais.")
         return [val.cpu().numpy() for _, val in self.model.state_dict().items()]
 
     def set_parameters(self, parameters):
@@ -44,47 +41,76 @@ class MNISTClient(fl.client.NumPyClient):
 
     def fit(self, parameters, config):
         self.set_parameters(parameters)
+
         optimizer = torch.optim.Adam(self.model.parameters())
         criterion = nn.NLLLoss()
         self.model.train()
         self.model.to(self.device)
 
-
         server_round = config.get("server_round", "?")
+        epochs = int(config.get("epochs", 1))
+
+        total_loss = 0.0
+        batch_count = 0
+        start_time = time.time()
+
         print(f"[Cliente {self.node_id}] Rodada {server_round}: Iniciando treino...")
 
-        epochs = int(config.get("epochs", 1))
         for _ in range(epochs):
             for images, labels in self.trainloader:
                 images, labels = images.to(self.device), labels.to(self.device)
+
                 optimizer.zero_grad()
                 outputs = self.model(images)
                 loss = criterion(outputs, labels)
                 loss.backward()
                 optimizer.step()
 
-        # Salvar e enviar
+                total_loss += loss.item()
+                batch_count += 1
+
+        train_time = time.time() - start_time
+        avg_loss = total_loss / batch_count if batch_count else 0.0
+
         updated_params = [val.cpu().numpy() for _, val in self.model.state_dict().items()]
-        cid_up = ipfs_add_numpy(updated_params, f"mnist_update_c{self.node_id}_r{server_round}.npz")
+        cid_up = ipfs_add_numpy(
+            updated_params,
+            f"update_client{self.node_id}_r{server_round}.npz",
+        )
 
         print(f"[Cliente {self.node_id}] Publicando update: {cid_up}")
+
+        tx_hash = None
         try:
             r = job_send_update(JOB_ADDR, cid_up)
-            print(f"[JOB] Tx enviada: {r['hash']}")
+            tx_hash = r.get("hash")
+            print(f"[Cliente {self.node_id}] Tx enviada: {tx_hash}")
         except Exception as e:
-            print(f"[ERRO] Falha na blockchain: {e}")
+            print(f"[Cliente {self.node_id}] ERRO na blockchain: {e}")
 
-        return updated_params, len(self.trainloader.dataset), {"cid": cid_up}
+        # Monta dicionário de métricas somente com tipos válidos
+        metrics = {
+            "cid": cid_up,
+            "avg_loss": float(avg_loss),
+            "batches": int(batch_count),
+            "train_time": float(train_time),
+            "epochs": int(epochs),
+            "node_id": int(self.node_id),
+        }
+        # Só adiciona tx_hash se existir
+        if tx_hash is not None:
+            metrics["tx_hash"] = str(tx_hash)
+
+        return updated_params, len(self.trainloader.dataset), metrics
 
     def evaluate(self, parameters, config):
         self.set_parameters(parameters)
         self.model.eval()
         self.model.to(self.device)
 
-        loss, correct = 0, 0
+        loss, correct = 0.0, 0
         criterion = nn.NLLLoss()
 
-        # Usa o self.testloader agora disponível
         with torch.no_grad():
             for images, labels in self.testloader:
                 images, labels = images.to(self.device), labels.to(self.device)
@@ -95,7 +121,10 @@ class MNISTClient(fl.client.NumPyClient):
         accuracy = correct / len(self.testloader.dataset)
         print(f"[Cliente {self.node_id}] Evaluate: Acc={accuracy:.4f}")
 
-        return float(loss), len(self.testloader.dataset), {"accuracy": float(accuracy)}
+        return float(loss), len(self.testloader.dataset), {
+            "accuracy": float(accuracy),
+            "node_id": int(self.node_id),
+        }
 
 
 if __name__ == "__main__":

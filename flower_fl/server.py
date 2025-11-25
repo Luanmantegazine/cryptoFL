@@ -16,7 +16,10 @@ from .onchain_job import job_update_global
 from .ipfs import ipfs_add_numpy
 from .utils import ROUNDS
 
+
+# ==============================
 # Configurações
+# ==============================
 JOB_ADDRS = [x.strip() for x in os.getenv("JOB_ADDRS", "").split(",") if x.strip()]
 SAVE_METRICS = os.getenv("SAVE_METRICS", "true").lower() == "true"
 METRICS_FILE = os.getenv("METRICS_FILE", "results/server_metrics.json")
@@ -25,42 +28,70 @@ if not JOB_ADDRS:
     raise RuntimeError("Configure JOB_ADDRS no .env")
 
 
+# ==============================
+# Coletor de Métricas
+# ==============================
 class MetricsCollector:
     def __init__(self, job_addrs):
         self.metrics = {
-            'experiment_start': datetime.now().isoformat(),
-            'job_addresses': job_addrs,
-            'total_rounds': ROUNDS,
-            'rounds': [],
-            'total_gas_eth': 0.0,
+            "experiment_start": datetime.now().isoformat(),
+            "job_addresses": job_addrs,
+            "total_rounds": ROUNDS,
+            "rounds": [],
+            "total_gas_eth": 0.0,
+            "final_accuracy": 0.0,
+            "accuracy_history": [],
         }
 
-    def log_round(self, round_num, gas_fee, cid, tx_hash, num_clients, failures):
-        self.metrics['rounds'].append({
-            'round': round_num,
-            'timestamp': datetime.now().isoformat(),
-            'num_clients': num_clients,
-            'num_failures': failures,
-            'gas_eth': gas_fee,
-            'tx_hash': tx_hash,
-            'ipfs_cid': cid,
-        })
-        self.metrics['total_gas_eth'] += gas_fee
+    def log_round(
+        self,
+        round_num,
+        gas_fee,
+        cid,
+        tx_hash,
+        num_clients,
+        failures,
+        accuracy=None,
+        client_metrics=None,  # <- novidades
+    ):
+        round_data = {
+            "round": round_num,
+            "timestamp": datetime.now().isoformat(),
+            "num_clients": num_clients,
+            "num_failures": failures,
+            "gas_eth": gas_fee,
+            "tx_hash": tx_hash,
+            "ipfs_cid": cid,
+        }
+
+        if accuracy is not None:
+            round_data["accuracy"] = accuracy
+            self.metrics["accuracy_history"].append(accuracy)
+            self.metrics["final_accuracy"] = accuracy
+
+        if client_metrics is not None:
+            round_data["client_metrics"] = client_metrics
+
+        self.metrics["rounds"].append(round_data)
+        self.metrics["total_gas_eth"] += gas_fee
 
     def save(self):
         if not SAVE_METRICS:
             return
 
-        self.metrics['experiment_end'] = datetime.now().isoformat()
+        self.metrics["experiment_end"] = datetime.now().isoformat()
         Path(METRICS_FILE).parent.mkdir(parents=True, exist_ok=True)
 
-        with open(METRICS_FILE, 'w') as f:
+        with open(METRICS_FILE, "w") as f:
             json.dump(self.metrics, f, indent=2)
 
-        print(f"\n Métricas salvas: {METRICS_FILE}")
+        print(f"\n Métricas salvas em: {METRICS_FILE}")
         print(f" Gas total: {self.metrics['total_gas_eth']:.8f} ETH")
 
 
+# ==============================
+# Estratégia de aprendizado
+# ==============================
 class BlockchainFLStrategy(fl.server.strategy.FedAvg):
 
     def __init__(self, min_clients=3):
@@ -76,6 +107,9 @@ class BlockchainFLStrategy(fl.server.strategy.FedAvg):
         self.latest_cid = None
         self._initialize_global_model()
 
+    # -------------------------
+    # Inicializar modelo global
+    # -------------------------
     def _initialize_global_model(self):
         print("\n" + "=" * 70)
         print(" INICIALIZANDO MODELO GLOBAL")
@@ -85,62 +119,79 @@ class BlockchainFLStrategy(fl.server.strategy.FedAvg):
             print("[1/3] Criando MNISTNet...")
             model = MNISTNet()
             initial_params = [val.cpu().numpy() for _, val in model.state_dict().items()]
-            print(f"      ✓ {len(initial_params)} camadas")
+            print(f" ✓ {len(initial_params)} camadas")
 
             print("[2/3] Publicando no IPFS...")
             self.latest_cid = ipfs_add_numpy(initial_params, "global_round0.npz")
-            print(f"      ✓ CID: {self.latest_cid}")
+            print(f" ✓ CID: {self.latest_cid}")
 
             print("[3/3] Registrando on-chain...")
             for idx, addr in enumerate(JOB_ADDRS, 1):
                 result = job_update_global(addr, self.latest_cid)
-                print(f"      ✓ Job {idx}: {addr[:10]}...")
-                print(f"        Tx: {result['hash']}")
-                print(f"        Gas: {result['gasETH']:.8f} ETH")
+                print(f" ✓ Job {idx}: {addr[:10]}...")
+                print(f"   Tx: {result['hash']}")
+                print(f"   Gas: {result['gasETH']:.8f} ETH")
 
-                self.metrics.log_round(0, result['gasETH'], self.latest_cid,
-                                       result['hash'], 0, 0)
+                self.metrics.log_round(
+                    0,
+                    result["gasETH"],
+                    self.latest_cid,
+                    result["hash"],
+                    0,
+                    0,
+                )
 
-            print("\nModelo inicial publicado!\n")
+            print("\n Modelo inicial publicado!\n")
 
         except Exception as e:
             print(f"\n ERRO: {e}")
-            import traceback
-            traceback.print_exc()
             sys.exit(1)
 
-    # ✅ CORREÇÃO: Use 'server_round' e 'parameters' (obrigatório no Flower v1.8+)
+    # -------------------------
+    # Injeta CID global nos clientes
+    # -------------------------
     def configure_fit(self, server_round, parameters, client_manager):
-
-        # Chama a implementação pai
         instructions = super().configure_fit(server_round, parameters, client_manager)
-
-        # Injeta o CID no config de cada cliente
         for _, fit_ins in instructions:
             fit_ins.config.setdefault("cid_global", self.latest_cid)
             fit_ins.config.setdefault("epochs", 1)
             fit_ins.config.setdefault("server_round", server_round)
-
         return instructions
 
-    # ✅ CORREÇÃO: Use 'server_round' (obrigatório no Flower v1.8+)
+    # -------------------------
+    # Agregação + salvamento de métricas
+    # -------------------------
     def aggregate_fit(self, server_round, results, failures):
         print(f"\n{'=' * 70}")
         print(f" ROUND {server_round}/{ROUNDS}")
         print(f"{'=' * 70}")
-        print(f" Resultados: {len(results)} sucesso, {len(failures)} falhas")
 
-        # Chamar método pai
+        # 1. Coletar métricas individuais dos clientes
+        client_metrics = []
+        for idx, (client, fit_res) in enumerate(results, start=1):
+            m = fit_res.metrics or {}
+            entry = {
+                "client_index": idx,
+                "num_examples": fit_res.num_examples,
+            }
+            entry.update(m)
+            client_metrics.append(entry)
+
+        # 2. Agregar parâmetros
         aggregated_parameters, aggregated_metrics = super().aggregate_fit(
             server_round, results, failures
         )
+
+        accuracy = None
+        if aggregated_metrics and "accuracy" in aggregated_metrics:
+            accuracy = aggregated_metrics["accuracy"]
 
         if aggregated_parameters is None:
             print(" Nenhum parâmetro agregado")
             return None, {}
 
+        # 3. Salvar modelo, registrar no blockchain, salvar métricas
         try:
-            # Converter para numpy
             aggregated_ndarrays = parameters_to_ndarrays(aggregated_parameters)
 
             # IPFS
@@ -149,61 +200,48 @@ class BlockchainFLStrategy(fl.server.strategy.FedAvg):
                 aggregated_ndarrays,
                 f"global_round{server_round}.npz"
             )
-            print(f"      ✓ CID: {self.latest_cid}")
+
+            print(f" ✓ CID: {self.latest_cid}")
 
             # Blockchain
             print(f"[2/2] Registrando on-chain...")
-            total_gas = 0.0
-
             for idx, addr in enumerate(JOB_ADDRS, 1):
                 result = job_update_global(addr, self.latest_cid)
-                gas_fee = result['gasETH']
-                print(f"      ✓ Job {idx}: Gas {gas_fee:.8f} ETH")
-                total_gas += gas_fee
 
-                if idx == 1:
+                if idx == 1:  # registra uma vez
                     self.metrics.log_round(
-                        server_round, gas_fee, self.latest_cid,
-                        result['hash'], len(results), len(failures)
+                        server_round,
+                        result["gasETH"],
+                        self.latest_cid,
+                        result["hash"],
+                        len(results),
+                        len(failures),
+                        accuracy,
+                        client_metrics=client_metrics,
                     )
 
             print(f"\n Round {server_round} concluído!")
-            print(f" Gas: {total_gas:.8f} ETH")
 
         except Exception as e:
             print(f"\n ERRO: {e}")
-            import traceback
-            traceback.print_exc()
 
         return aggregated_parameters, aggregated_metrics
 
 
+# ==============================
+# Main
+# ==============================
 def main():
     print("\n" + "=" * 70)
     print(" FLOWER FEDERATED LEARNING SERVER")
     print("=" * 70)
-    print(f" Endereço: 0.0.0.0:8080")
-    print(f" Rounds: {ROUNDS}")
-    print(f" Jobs: {', '.join([addr[:10] + '...' for addr in JOB_ADDRS])}")
-    print(f" Salvar métricas: {SAVE_METRICS}")
-    print("=" * 70 + "\n")
 
-    # Configurar número mínimo de clientes
     min_clients = int(os.getenv("MIN_CLIENTS", "1"))
-    print(f" Configuração: MIN_CLIENTS={min_clients}\n")
-
-    # Criar estratégia
     strategy = BlockchainFLStrategy(min_clients=min_clients)
 
-    # Configuração do servidor
-    config = fl.server.ServerConfig(
-        num_rounds=ROUNDS,
-        round_timeout=None,
-    )
+    config = fl.server.ServerConfig(num_rounds=ROUNDS, round_timeout=None)
 
     try:
-        print(" Servidor iniciando... (aguardando clientes)\n")
-
         fl.server.start_server(
             server_address="0.0.0.0:8080",
             strategy=strategy,
@@ -211,21 +249,10 @@ def main():
             grpc_max_message_length=536870912,
         )
 
-        # Experimento concluído
-        print("\n" + "=" * 70)
-        print(" EXPERIMENTO CONCLUÍDO COM SUCESSO!")
-        print("=" * 70)
-
-        # Salvar métricas finais
         strategy.metrics.save()
 
-    except KeyboardInterrupt:
-        print("\n\n Servidor interrompido pelo usuário")
-        strategy.metrics.save()
     except Exception as e:
         print(f"\n ERRO FATAL: {e}")
-        import traceback
-        traceback.print_exc()
         strategy.metrics.save()
         sys.exit(1)
 
