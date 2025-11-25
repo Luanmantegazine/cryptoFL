@@ -724,7 +724,7 @@ This project is licensed under the **MIT License** - see [LICENSE](LICENSE) file
 ```
 MIT License
 
-Copyright (c) 2025 CryptoFL Contributors
+Copyright (c) 2025 Luanmantegazine Contributors
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -738,24 +738,8 @@ furnished to do so, subject to the following conditions:
 
 ---
 
-## 📖 Citation
-
-If you use this project in your research, please cite:
-```bibtex
-@article{cryptofl2025,
-  title={A Blockchain-Based Platform for Federated Learning},
-  author={Lastname, Firstname and Lastname, Firstname},
-  journal={Journal Not Specified},
-  year={2025},
-  url={https://github.com/your-username/CryptoFL}
-}
-```
-
----
-
 ## 🌐 Links
 
-- **Research Paper**: [Blockchain_FL_Paper.pdf](Blockchain_FL_Paper.pdf)
 - **Arbitrum Docs**: [docs.arbitrum.io](https://docs.arbitrum.io)
 - **Flower Framework**: [flower.dev](https://flower.dev)
 - **IPFS**: [ipfs.tech](https://ipfs.tech)
