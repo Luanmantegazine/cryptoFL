@@ -189,7 +189,7 @@ This project was developed as part of academic research exploring the intersecti
 
 ### 1. Clone Repository
 ```bash
-git clone https://github.com/your-username/CryptoFL.git
+git clone https://github.com/luanmantegazine/CryptoFL.git
 cd CryptoFL
 ```
 
