@@ -52,6 +52,8 @@ class MNISTClient(fl.client.NumPyClient):
 
         total_loss = 0.0
         batch_count = 0
+        correct_predictions = 0
+        total_samples = 0
         start_time = time.time()
 
         print(f"[Cliente {self.node_id}] Rodada {server_round}: Iniciando treino...")
@@ -68,9 +70,14 @@ class MNISTClient(fl.client.NumPyClient):
 
                 total_loss += loss.item()
                 batch_count += 1
+                correct_predictions += (outputs.argmax(1) == labels).sum().item()
+                total_samples += labels.size(0)
 
         train_time = time.time() - start_time
         avg_loss = total_loss / batch_count if batch_count else 0.0
+        train_accuracy = (
+            correct_predictions / total_samples if total_samples > 0 else 0.0
+        )
 
         updated_params = [val.cpu().numpy() for _, val in self.model.state_dict().items()]
         cid_up = ipfs_add_numpy(
@@ -93,7 +100,10 @@ class MNISTClient(fl.client.NumPyClient):
             "cid": cid_up,
             "avg_loss": float(avg_loss),
             "batches": int(batch_count),
+            "loss": float(avg_loss),
+            "accuracy": float(train_accuracy),
             "train_time": float(train_time),
+            "train_samples": int(total_samples),
             "epochs": int(epochs),
             "node_id": int(self.node_id),
         }
