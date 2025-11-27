@@ -52,7 +52,8 @@ class MetricsCollector:
         num_clients,
         failures,
         accuracy=None,
-        client_metrics=None,  # <- novidades
+        client_metrics=None,
+        aggregated_metrics=None,
     ):
         round_data = {
             "round": round_num,
@@ -71,6 +72,9 @@ class MetricsCollector:
 
         if client_metrics is not None:
             round_data["client_metrics"] = client_metrics
+
+        if aggregated_metrics is not None:
+            round_data["aggregated_metrics"] = aggregated_metrics
 
         self.metrics["rounds"].append(round_data)
         self.metrics["total_gas_eth"] += gas_fee
@@ -94,6 +98,39 @@ class MetricsCollector:
 # ==============================
 class BlockchainFLStrategy(fl.server.strategy.FedAvg):
 
+    @staticmethod
+    def _aggregate_metrics(metrics):
+        if not metrics:
+            return {}
+
+        total_examples = sum(num_examples for num_examples, _ in metrics)
+        if total_examples == 0:
+            return {}
+
+        total_accuracy = 0.0
+        total_loss = 0.0
+        acc_count = 0
+        loss_count = 0
+
+        for num_examples, client_metrics in metrics:
+            if "accuracy" in client_metrics:
+                total_accuracy += client_metrics["accuracy"] * num_examples
+                acc_count += num_examples
+            if "loss" in client_metrics:
+                total_loss += client_metrics["loss"] * num_examples
+                loss_count += num_examples
+            elif "avg_loss" in client_metrics:
+                total_loss += client_metrics["avg_loss"] * num_examples
+                loss_count += num_examples
+
+        aggregated = {}
+        if acc_count:
+            aggregated["accuracy"] = total_accuracy / acc_count
+        if loss_count:
+            aggregated["loss"] = total_loss / loss_count
+
+        return aggregated
+
     def __init__(self, min_clients=3):
         super().__init__(
             fraction_fit=1.0,
@@ -101,6 +138,7 @@ class BlockchainFLStrategy(fl.server.strategy.FedAvg):
             min_fit_clients=min_clients,
             min_evaluate_clients=min_clients,
             min_available_clients=min_clients,
+            fit_metrics_aggregation_fn=self._aggregate_metrics,
         )
 
         self.metrics = MetricsCollector(JOB_ADDRS)
@@ -218,6 +256,7 @@ class BlockchainFLStrategy(fl.server.strategy.FedAvg):
                         len(failures),
                         accuracy,
                         client_metrics=client_metrics,
+                        aggregated_metrics=aggregated_metrics,
                     )
 
             print(f"\n Round {server_round} concluído!")
