@@ -1,8 +1,7 @@
 import sys
 import os
-from dotenv import  find_dotenv, set_key
+from dotenv import find_dotenv, set_key
 from eth_account import Account
-from onchain_dao import extract_offer_id_from_logs
 
 try:
     import onchain_dao
@@ -21,6 +20,7 @@ from onchain_dao import (
     get_requester_contract,
     get_trainer_contract,
     ZERO_ADDRESS,
+    extract_offer_id_from_logs,
 )
 
 # --- Endereços do seu 'npx hardhat node' ---
