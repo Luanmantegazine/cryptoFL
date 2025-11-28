@@ -11,10 +11,10 @@ from pathlib import Path
 import flwr as fl
 from flwr.common import parameters_to_ndarrays
 
-from .models import MNISTNet
-from .onchain_job import job_update_global
-from .ipfs import ipfs_add_numpy
-from .utils import ROUNDS
+from models import MNISTNet
+from onchain_job import job_update_global
+from ipfs import ipfs_add_numpy
+from utils import ROUNDS
 
 
 # ==============================
