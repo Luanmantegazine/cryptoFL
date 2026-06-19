@@ -1,6 +1,7 @@
 import torch.nn as nn
 import torch
 import torch.nn.functional as F
+from torchvision import models as tvm
 
 
 class MNISTNet(nn.Module):
@@ -26,3 +27,45 @@ class MNISTNet(nn.Module):
         x = self.dropout2(x)
         x = self.fc2(x)
         return F.log_softmax(x, dim=1)
+
+
+class ResNet18Flower(nn.Module):
+    """ResNet-18 adaptada para imagens pequenas (32×32, ex.: CIFAR-10).
+
+    Substitui a conv1 7×7/stride 2 da ResNet original (projetada para
+    ImageNet 224×224) por uma conv 3×3/stride 1 e remove o maxpool inicial,
+    preservando resolução espacial suficiente para imagens 32×32. A camada
+    final `fc` é trocada por uma `Linear(512, num_classes)`.
+
+    `in_channels` permite usar com MNIST (1 canal); default 3 (CIFAR-10).
+    """
+
+    def __init__(self, num_classes: int = 10, in_channels: int = 3):
+        super().__init__()
+        backbone = tvm.resnet18(weights=None)
+
+        # Adapta conv1 para imagens pequenas (e número de canais variável).
+        backbone.conv1 = nn.Conv2d(
+            in_channels, 64,
+            kernel_size=3, stride=1, padding=1, bias=False,
+        )
+        # Remove maxpool inicial (preserva resolução em 32×32).
+        backbone.maxpool = nn.Identity()
+        # Cabeça de classificação.
+        backbone.fc = nn.Linear(512, num_classes)
+
+        self.model = backbone
+
+    def forward(self, x):
+        x = self.model(x)
+        return F.log_softmax(x, dim=1)
+
+
+def get_model(name: str, **kwargs) -> nn.Module:
+    """Dispatcher de modelo por nome ('mnistnet' | 'resnet18')."""
+    key = (name or "").lower()
+    if key == "mnistnet":
+        return MNISTNet()
+    if key == "resnet18":
+        return ResNet18Flower(**kwargs)
+    raise ValueError(f"Modelo '{name}' não suportado.")

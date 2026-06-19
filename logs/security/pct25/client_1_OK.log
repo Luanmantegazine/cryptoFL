@@ -1,0 +1,48 @@
+/opt/miniconda3/lib/python3.10/site-packages/eth_keyfile/__init__.py:3: DeprecationWarning: pkg_resources is deprecated as an API. See https://setuptools.pypa.io/en/latest/pkg_resources.html
+  import pkg_resources
+/opt/miniconda3/lib/python3.10/site-packages/web3/providers/websocket/websocket.py:21: DeprecationWarning: websockets.client.connect is deprecated
+  from websockets.client import (
+/opt/miniconda3/lib/python3.10/site-packages/websockets/legacy/__init__.py:6: DeprecationWarning: websockets.legacy is deprecated; see https://websockets.readthedocs.io/en/stable/howto/upgrade.html for upgrade instructions
+  warnings.warn(  # deprecated in 14.0 - 2024-11-09
+/opt/miniconda3/lib/python3.10/site-packages/web3/providers/websocket/websocket_v2.py:18: DeprecationWarning: websockets.client.connect is deprecated
+  from websockets.client import (
+/opt/miniconda3/lib/python3.10/site-packages/web3/providers/persistent.py:10: DeprecationWarning: websockets.WebSocketClientProtocol is deprecated
+  from websockets import (
+[93mWARNING [0m:   DEPRECATED FEATURE: flwr.client.start_client() is deprecated.
+	Instead, use the `flower-supernode` CLI command to start a SuperNode as shown below:
+
+		$ flower-supernode --insecure --superlink='<IP>:<PORT>'
+
+	To view all available options, run:
+
+		$ flower-supernode --help
+
+	Using `start_client()` is deprecated.
+
+            This is a deprecated feature. It will be removed
+            entirely in future versions of Flower.
+        
+[92mINFO [0m:      
+[92mINFO [0m:      Received: train message eccef25f-05aa-481d-9e3a-b706442efddc
+[92mINFO [0m:      Sent reply
+[92mINFO [0m:      
+[92mINFO [0m:      Received: train message 9dc9aa6a-82e8-431d-9a32-1d058f3ae5e3
+[92mINFO [0m:      Sent reply
+[92mINFO [0m:      
+[92mINFO [0m:      Received: train message f9327022-2ff7-4e8a-8a95-aae609b1918d
+[92mINFO [0m:      Sent reply
+[92mINFO [0m:      
+[92mINFO [0m:      Received: reconnect message 151eaa72-fc9c-4f63-bdd1-0895975e0ece
+[92mINFO [0m:      Disconnect and shut down
+
+======================================================================
+ BASELINE CLIENT 1/3 — conectando em 0.0.0.0:8081
+======================================================================
+
+[Cliente 1] Modelo=mnistnet  Dataset=mnist
+[Dataset] Node 1: índices 15000-30000 (15000 amostras)
+[Cliente 1] Treino: 15000 amostras
+[Cliente 1] Teste:  10000 amostras
+[BaselineClient 1] Rodada ?: treinando...
+[BaselineClient 1] Rodada ?: treinando...
+[BaselineClient 1] Rodada ?: treinando...

@@ -62,3 +62,8 @@ def job_send_update(job_addr: str, cid: str, encrypted: bytes = b""):
     job = _job(job_addr)
     cid_hash = keccak(text=cid)
     return _send(job.functions.recordClientUpdate(cid_hash, encrypted))
+
+
+def get_gas_price_gwei() -> float:
+    """Retorna o gas price atual da rede em Gwei."""
+    return w3.eth.gas_price / 1e9

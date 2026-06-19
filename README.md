@@ -40,6 +40,21 @@ A decentralized platform for **Federated Learning** coordinated by blockchain sm
 
 **CryptoFL** is a research platform that integrates **Federated Learning** (FL) with **blockchain technology** to create a trustless, transparent, and economically viable marketplace for distributed machine learning tasks.
 
+### Acronyms
+
+| Acronym | Full form |
+|---|---|
+| FL | Federated Learning |
+| IPFS | InterPlanetary File System |
+| DAO | Decentralised Autonomous Organisation |
+| CID | Content Identifier |
+| L2 | Layer 2 (Ethereum scaling solution) |
+| EVM | Ethereum Virtual Machine |
+| FedAvg | Federated Averaging |
+| IID | Independent and Identically Distributed |
+| non-IID | Not Independent and Identically Distributed |
+| DPI | Dots Per Inch |
+
 ### Key Innovations
 
 - 🔗 **Smart Contract Coordination**: Automated job matching, contract negotiation, and payment release
@@ -331,7 +346,50 @@ Generates `experiment_results_complete.png` with:
 
 ---
 
-## 📁 Project Structure
+## � Reproducing paper results
+
+All experiments can be reproduced without deploying contracts or using real ETH.
+
+### Baseline only (no blockchain, no IPFS)
+
+```bash
+# Terminal 1 — server
+ROUNDS=5 MIN_CLIENTS=3 python -m flower_fl.baseline_runner
+
+# Terminals 2–4 — clients
+BASELINE_AS_CLIENT=1 NODE_ID=0 NUM_NODES=3 python -m flower_fl.baseline_runner
+BASELINE_AS_CLIENT=1 NODE_ID=1 NUM_NODES=3 python -m flower_fl.baseline_runner
+BASELINE_AS_CLIENT=1 NODE_ID=2 NUM_NODES=3 python -m flower_fl.baseline_runner
+```
+
+### Multiple runs with variance
+
+```bash
+python multi_run.py --mode baseline --clients-list 5,10,15 --rounds 5 --repetitions 3
+```
+
+### Security experiment (no blockchain needed)
+
+```bash
+python security_experiment.py --mode baseline --clients 5 --rounds 5 \
+    --malicious-pct 0.0,0.2,0.4 --attack-type label_flip
+```
+
+### Ablation study (no blockchain needed for `baseline` and `no_ipfs`)
+
+```bash
+python ablation_experiment.py --clients 3 --rounds 3
+```
+
+### Full system (requires Hardhat node + Pinata JWT)
+
+```bash
+python run.py --clients 5 --rounds 5
+```
+
+---
+
+## �📁 Project Structure
 ```
 CryptoFL/
 ├── contracts/                  # Smart contracts
@@ -563,7 +621,36 @@ WaitingSignatures → WaitingRequesterSignature
 
 ---
 
-## 📊 Evaluation & Results
+## � Security model
+
+### What blockchain guarantees in this system
+
+Recording CIDs on-chain provides:
+- **Ordering** — every global model version and client update has an immutable, timestamped sequence on-chain.
+- **Auditability** — any third party can verify which CID was published in which round, by whom, and when.
+- **Tamper-evidence** — once a CID is recorded, the reference cannot be changed retroactively.
+
+### What it does NOT guarantee
+
+- **Correctness of updates** — the blockchain stores a pointer (CID) to the update, not the update itself. A trainer can submit a poisoned update; its CID will be faithfully recorded.
+- **Aggregator honesty** — FedAvg is performed off-chain by a trusted server. A malicious aggregator could publish an arbitrary global model and record a legitimate-looking CID.
+- **Sybil resistance** — any address can register as a Trainer in the DAO. Without additional identity verification, a single actor can register multiple Trainers.
+
+### Mitigations implemented
+
+- **Norm-based anomaly detection** (`DETECT_ANOMALIES=true`): updates whose L2 norm exceeds `mean + N×std` across a round are flagged in the metrics. See `flower_fl/server.py`.
+- **Malicious client simulation** (`MALICIOUS=true`): supports `label_flip`, `noise`, and `zero` attacks. See `flower_fl/client.py`.
+- **Security experiment** (`security_experiment.py`): runs paired experiments (clean vs. X% malicious) and reports accuracy drop and flagged updates.
+
+### Known limitations (future work)
+
+- The aggregator remains a trusted party; decentralizing aggregation (e.g. via Shapley-based on-chain verification or zkML) is left as future work.
+- The norm check is a heuristic and can be bypassed by a sophisticated adversary (e.g. scaling a poisoned update to match the expected norm range).
+- Reputation/slashing of flagged trainers is not yet enforced on-chain; the `rating` field in `Trainer.sol` is updated manually.
+
+---
+
+## �📊 Evaluation & Results
 
 ### Metrics Collected
 
@@ -740,6 +827,7 @@ furnished to do so, subject to the following conditions:
 
 ## 🌐 Links
 
+- **Repository**: [github.com/luanmantegazine/CryptoFL](https://github.com/luanmantegazine/CryptoFL)
 - **Arbitrum Docs**: [docs.arbitrum.io](https://docs.arbitrum.io)
 - **Flower Framework**: [flower.dev](https://flower.dev)
 - **IPFS**: [ipfs.tech](https://ipfs.tech)
