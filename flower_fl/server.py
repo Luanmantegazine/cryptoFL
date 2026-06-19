@@ -1,4 +1,5 @@
 import os
+import time
 
 os.environ["GRPC_POLL_STRATEGY"] = "poll"
 os.environ["GRPC_ENABLE_FORK_SUPPORT"] = "1"
@@ -23,6 +24,13 @@ from utils import ROUNDS
 JOB_ADDRS = [x.strip() for x in os.getenv("JOB_ADDRS", "").split(",") if x.strip()]
 SAVE_METRICS = os.getenv("SAVE_METRICS", "true").lower() == "true"
 METRICS_FILE = os.getenv("METRICS_FILE", "results/server_metrics.json")
+DATASET_NAME = os.getenv("DATASET", "mnist")
+MODEL_NAME = os.getenv("MODEL", "mnistnet")
+DETECT_ANOMALIES = os.getenv("DETECT_ANOMALIES", "true").lower() == "true"
+NORM_THRESHOLD_STD = float(os.getenv("NORM_THRESHOLD_STD", "2.0"))
+# updates com norma > mean + N*std são marcados como suspeitos
+SKIP_IPFS = os.getenv("SKIP_IPFS", "false").lower() == "true"
+# Quando True, não publica no IPFS nem on-chain (modo `no_ipfs` da ablação).
 
 if not JOB_ADDRS:
     raise RuntimeError("Configure JOB_ADDRS no .env")
@@ -41,6 +49,7 @@ class MetricsCollector:
             "total_gas_eth": 0.0,
             "final_accuracy": 0.0,
             "accuracy_history": [],
+            "gas_breakdown": [],
         }
 
     def log_round(
@@ -54,6 +63,10 @@ class MetricsCollector:
         accuracy=None,
         client_metrics=None,
         aggregated_metrics=None,
+        tx_latency_s=None,
+        mean_update_norm=None,
+        std_update_norm=None,
+        n_flagged=None,
     ):
         round_data = {
             "round": round_num,
@@ -63,6 +76,10 @@ class MetricsCollector:
             "gas_eth": gas_fee,
             "tx_hash": tx_hash,
             "ipfs_cid": cid,
+            "tx_latency_s": tx_latency_s,
+            "mean_update_norm": mean_update_norm,
+            "std_update_norm": std_update_norm,
+            "n_flagged": n_flagged,
         }
 
         if accuracy is not None:
@@ -89,7 +106,17 @@ class MetricsCollector:
         with open(METRICS_FILE, "w") as f:
             json.dump(self.metrics, f, indent=2)
 
+        # Breakdown separado em <metrics>_breakdown.json (default:
+        # results/server_metrics_breakdown.json).
+        metrics_path = Path(METRICS_FILE)
+        breakdown_file = str(
+            metrics_path.with_name(metrics_path.stem + "_breakdown" + metrics_path.suffix)
+        )
+        with open(breakdown_file, "w") as f:
+            json.dump(self.metrics["gas_breakdown"], f, indent=2)
+
         print(f"\n Métricas salvas em: {METRICS_FILE}")
+        print(f" Gas breakdown em : {breakdown_file}")
         print(f" Gas total: {self.metrics['total_gas_eth']:.8f} ETH")
 
 
@@ -132,6 +159,15 @@ class BlockchainFLStrategy(fl.server.strategy.FedAvg):
         return aggregated
 
     def __init__(self, min_clients=3):
+        """Inicializa a estratégia FedAvg com camada blockchain.
+
+        Notas sobre sincronização inicial: `min_fit_clients` já mitiga
+        parcialmente o problema de clientes ainda não conectados no round 1,
+        mas não é uma garantia. Um heartbeat explícito cliente→servidor
+        seria necessário para eliminar a janela de corrida (ver Tarefa 4
+        do Sprint 1). O `time.sleep(5)` abaixo está disponível como
+        mitigação adicional caso o handshake gRPC demore.
+        """
         super().__init__(
             fraction_fit=1.0,
             fraction_evaluate=0.0,
@@ -144,6 +180,9 @@ class BlockchainFLStrategy(fl.server.strategy.FedAvg):
         self.metrics = MetricsCollector(JOB_ADDRS)
         self.latest_cid = None
         self._initialize_global_model()
+        # NOTE: min_fit_clients already prevents rounds from starting before enough
+        # clients connect. A heartbeat/readiness endpoint would fully eliminate the
+        # first-round participation bug (see Section 4.1 of the paper).
 
     # -------------------------
     # Inicializar modelo global
@@ -154,10 +193,27 @@ class BlockchainFLStrategy(fl.server.strategy.FedAvg):
         print("=" * 70)
 
         try:
-            print("[1/3] Criando MNISTNet...")
-            model = MNISTNet()
+            print(f"[1/3] Criando modelo: {MODEL_NAME}")
+            from models import get_model  # import absoluto, mantendo padrão existente
+            model = get_model(MODEL_NAME)
             initial_params = [val.cpu().numpy() for _, val in model.state_dict().items()]
             print(f" ✓ {len(initial_params)} camadas")
+
+            if SKIP_IPFS:
+                print("[2/3] SKIP_IPFS: pulando publicação no IPFS")
+                self.latest_cid = None
+                print("[3/3] SKIP_IPFS: pulando registro on-chain")
+                self.metrics.log_round(
+                    0,
+                    0.0,
+                    None,
+                    None,
+                    0,
+                    0,
+                    tx_latency_s=None,
+                )
+                print("\n Modelo inicial pronto (sem IPFS/blockchain)!\n")
+                return
 
             print("[2/3] Publicando no IPFS...")
             self.latest_cid = ipfs_add_numpy(initial_params, "global_round0.npz")
@@ -165,10 +221,19 @@ class BlockchainFLStrategy(fl.server.strategy.FedAvg):
 
             print("[3/3] Registrando on-chain...")
             for idx, addr in enumerate(JOB_ADDRS, 1):
+                _t0 = time.time()
                 result = job_update_global(addr, self.latest_cid)
+                _lat = time.time() - _t0
                 print(f" ✓ Job {idx}: {addr[:10]}...")
                 print(f"   Tx: {result['hash']}")
-                print(f"   Gas: {result['gasETH']:.8f} ETH")
+                print(f"   Gas: {result['gasETH']:.8f} ETH  Lat: {_lat:.3f}s")
+
+                self.metrics.metrics["gas_breakdown"].append({
+                    "round": 0,
+                    "operation": "publish_global_model",
+                    "gas_eth": result["gasETH"],
+                    "tx_hash": result["hash"],
+                })
 
                 self.metrics.log_round(
                     0,
@@ -177,6 +242,7 @@ class BlockchainFLStrategy(fl.server.strategy.FedAvg):
                     result["hash"],
                     0,
                     0,
+                    tx_latency_s=_lat,
                 )
 
             print("\n Modelo inicial publicado!\n")
@@ -191,7 +257,8 @@ class BlockchainFLStrategy(fl.server.strategy.FedAvg):
     def configure_fit(self, server_round, parameters, client_manager):
         instructions = super().configure_fit(server_round, parameters, client_manager)
         for _, fit_ins in instructions:
-            fit_ins.config.setdefault("cid_global", self.latest_cid)
+            if not SKIP_IPFS:
+                fit_ins.config.setdefault("cid_global", self.latest_cid)
             fit_ins.config.setdefault("epochs", 1)
             fit_ins.config.setdefault("server_round", server_round)
         return instructions
@@ -204,10 +271,23 @@ class BlockchainFLStrategy(fl.server.strategy.FedAvg):
         print(f" ROUND {server_round}/{ROUNDS}")
         print(f"{'=' * 70}")
 
-        # 1. Coletar métricas individuais dos clientes
+        import numpy as np
+
+        # 1. Calcular norma L2 de cada update e coletar métricas dos clientes.
+        norms = []
         client_metrics = []
         for idx, (client, fit_res) in enumerate(results, start=1):
-            m = fit_res.metrics or {}
+            try:
+                params = fl.common.parameters_to_ndarrays(fit_res.parameters)
+                flat = np.concatenate([p.flatten() for p in params])
+                norm = float(np.linalg.norm(flat))
+            except Exception as e:
+                print(f" [WARN] norma indisponível para cliente {idx}: {e}")
+                norm = float("nan")
+            norms.append(norm)
+
+            m = dict(fit_res.metrics or {})
+            m["update_norm"] = norm
             entry = {
                 "client_index": idx,
                 "num_examples": fit_res.num_examples,
@@ -215,7 +295,21 @@ class BlockchainFLStrategy(fl.server.strategy.FedAvg):
             entry.update(m)
             client_metrics.append(entry)
 
-        # 2. Agregar parâmetros
+        # 2. Detecção de anomalias por norma (mean + N*std).
+        valid_norms = [n for n in norms if not (n != n)]  # filtra NaN
+        mean_norm = float(np.mean(valid_norms)) if valid_norms else None
+        std_norm = float(np.std(valid_norms)) if len(valid_norms) > 1 else 0.0
+        n_flagged = 0
+        if DETECT_ANOMALIES and mean_norm is not None:
+            threshold = mean_norm + NORM_THRESHOLD_STD * std_norm
+            for entry, n in zip(client_metrics, norms):
+                if n == n and n > threshold:  # n == n filtra NaN
+                    entry["flagged_as_suspicious"] = 1
+                    n_flagged += 1
+            if n_flagged > 0:
+                print(f"[Servidor] ⚠ Round {server_round}: {n_flagged}/{len(results)} updates suspeitos (normas acima de {threshold:.2f})")
+
+        # 3. Agregar parâmetros (FedAvg pleno — não removemos clientes flagged).
         aggregated_parameters, aggregated_metrics = super().aggregate_fit(
             server_round, results, failures
         )
@@ -232,6 +326,26 @@ class BlockchainFLStrategy(fl.server.strategy.FedAvg):
         try:
             aggregated_ndarrays = parameters_to_ndarrays(aggregated_parameters)
 
+            if SKIP_IPFS:
+                self.latest_cid = None
+                self.metrics.log_round(
+                    server_round,
+                    0.0,
+                    None,
+                    None,
+                    len(results),
+                    len(failures),
+                    accuracy,
+                    client_metrics=client_metrics,
+                    aggregated_metrics=aggregated_metrics,
+                    tx_latency_s=None,
+                    mean_update_norm=mean_norm,
+                    std_update_norm=std_norm,
+                    n_flagged=n_flagged,
+                )
+                print(f"\n Round {server_round} concluído (SKIP_IPFS)!")
+                return aggregated_parameters, aggregated_metrics
+
             # IPFS
             print(f"\n[1/2] Publicando no IPFS...")
             self.latest_cid = ipfs_add_numpy(
@@ -244,7 +358,16 @@ class BlockchainFLStrategy(fl.server.strategy.FedAvg):
             # Blockchain
             print(f"[2/2] Registrando on-chain...")
             for idx, addr in enumerate(JOB_ADDRS, 1):
+                _t0 = time.time()
                 result = job_update_global(addr, self.latest_cid)
+                _lat = time.time() - _t0
+
+                self.metrics.metrics["gas_breakdown"].append({
+                    "round": server_round,
+                    "operation": "publish_global_model",
+                    "gas_eth": result["gasETH"],
+                    "tx_hash": result["hash"],
+                })
 
                 if idx == 1:  # registra uma vez
                     self.metrics.log_round(
@@ -257,6 +380,10 @@ class BlockchainFLStrategy(fl.server.strategy.FedAvg):
                         accuracy,
                         client_metrics=client_metrics,
                         aggregated_metrics=aggregated_metrics,
+                        tx_latency_s=_lat,
+                        mean_update_norm=mean_norm,
+                        std_update_norm=std_norm,
+                        n_flagged=n_flagged,
                     )
 
             print(f"\n Round {server_round} concluído!")

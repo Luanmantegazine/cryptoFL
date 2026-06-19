@@ -1,0 +1,31 @@
+{
+  "config": {
+    "clients": 4,
+    "rounds": 3,
+    "attack_type": "label_flip",
+    "attack_prob": 1.0,
+    "mode": "baseline",
+    "started": "2026-06-19T12:53:47.436303",
+    "finished": "2026-06-19T13:04:16.802165"
+  },
+  "results": {
+    "0.0": {
+      "final_accuracy": 0.9690166666666666,
+      "n_flagged_total": 0,
+      "accuracy_drop": 0.0,
+      "n_malicious": 0
+    },
+    "0.25": {
+      "final_accuracy": 0.9578666666666666,
+      "n_flagged_total": 0,
+      "accuracy_drop": 0.011149999999999993,
+      "n_malicious": 1
+    },
+    "0.5": {
+      "final_accuracy": 0.9593166666666667,
+      "n_flagged_total": 0,
+      "accuracy_drop": 0.009699999999999931,
+      "n_malicious": 2
+    }
+  }
+}
