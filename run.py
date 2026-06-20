@@ -183,7 +183,7 @@ class ExperimentRunner:
 
         print_info("Criando JobContract...")
         result = subprocess.run(
-            [self.python_cmd, "-m", "flower_fl.deploy-job"],
+            [self.python_cmd, "-m", "flower_fl.deploy_job"],
             capture_output=True,
             text=True
         )
