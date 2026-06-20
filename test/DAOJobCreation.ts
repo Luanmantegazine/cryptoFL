@@ -14,7 +14,11 @@ describe("DAO job creation", async function () {
     throw new Error("wallet clients not available");
   }
 
-  const dao = await viem.deployContract("contracts/DAO.sol:DAO", {
+  // hardhat-viem signature is deployContract(name, constructorArgs, config).
+  // DAO has no constructor args, so pass [] explicitly; the wallet goes in the
+  // 3rd (config) argument. Passing the config object in the args slot makes
+  // viem treat it as constructor args and throw AbiConstructorNotFoundError.
+  const dao = await viem.deployContract("contracts/DAO.sol:DAO", [], {
     client: { wallet: deployer },
   });
 
@@ -32,10 +36,14 @@ describe("DAO job creation", async function () {
 
   const spec = ["Proc", "16GB", "8 cores"] as const;
 
-  const registerTrainerSimulation = await daoAsTrainer.simulate.registerTrainer([
-    "Trainer description",
-    spec,
-  ]);
+  // NOTE: bind the caller account explicitly on every simulate() call. With
+  // viem 2.38.x, getContractAt({ client: { wallet } }) does NOT propagate the
+  // wallet account to .simulate, so msg.sender defaults to the zero address and
+  // msg.sender-gated requires (e.g. isRequester) revert. write() is unaffected.
+  const registerTrainerSimulation = await daoAsTrainer.simulate.registerTrainer(
+    ["Trainer description", spec],
+    { account: trainer.account },
+  );
 
   await daoAsTrainer.write.registerTrainer(registerTrainerSimulation.request);
 
@@ -46,19 +54,26 @@ describe("DAO job creation", async function () {
   const modelHash = keccak256(stringToBytes("model"));
   const endpointHash = keccak256(stringToBytes("endpoint"));
 
-  const offerSimulation = await daoAsRequester.simulate.MakeOffer([
-    "Job description",
-    modelHash,
-    endpointHash,
-    "0x",
-    1n,
-    3n,
-    trainerContractAddress,
-  ]);
+  const offerSimulation = await daoAsRequester.simulate.MakeOffer(
+    [
+      "Job description",
+      modelHash,
+      endpointHash,
+      "0x",
+      1n,
+      3n,
+      trainerContractAddress,
+    ],
+    { account: requester.account },
+  );
 
   await daoAsRequester.write.MakeOffer(offerSimulation.request);
 
-  const pendingOffers = await daoAsTrainer.read.getPendingOffers();
+  // getPendingOffers() is msg.sender-gated (isTrainer); pass the account so the
+  // eth_call uses the trainer as msg.sender (see note above).
+  const pendingOffers = await daoAsTrainer.read.getPendingOffers({
+    account: trainer.account,
+  });
   assert.equal(pendingOffers.length, 1);
 
   const offerId = pendingOffers[0];
@@ -78,7 +93,12 @@ describe("DAO job creation", async function () {
 
   const jobAddress = event.args?.job;
   assert.ok(typeof jobAddress === "string" && jobAddress !== "0x0000000000000000000000000000000000000000");
-  assert.equal(event.args?.trainer, trainer.account.address);
+  // Compare addresses case-insensitively: decoded event args are lowercase
+  // while account.address is EIP-55 checksummed.
+  assert.equal(
+    (event.args?.trainer as string).toLowerCase(),
+    trainer.account.address.toLowerCase(),
+  );
 
   const isJob = await dao.read.isJob([jobAddress as `0x${string}`]);
   assert.equal(isJob, true);
