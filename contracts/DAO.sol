@@ -2,7 +2,6 @@
 pragma solidity ^0.8.20;
 
 import "@openzeppelin/contracts/utils/Address.sol";
-import "@openzeppelin/contracts/utils/Counters.sol";
 import "./DataTypes.sol";
 import "./Requester.sol";
 import "./Trainer.sol";
@@ -12,8 +11,6 @@ event OfferMade(uint256 indexed offerId, address indexed requester, address inde
 event JobContractCreated(address indexed job, uint256 indexed offerId, address indexed requester, address trainer);
 
 contract DAO {
-    using Counters for Counters.Counter;
-
     mapping(address => address) public trainers;
     address[] public registeredTrainers;
 
@@ -22,11 +19,14 @@ contract DAO {
 
     mapping(address => JobContract) jobContracts;
 
-    Counters.Counter UID;
+    // Monotonic offer id. Replaces the deprecated OpenZeppelin `Counters`
+    // library (removed in OZ v5; this repo still pins v4.9.6). A plain uint256
+    // with `unchecked { ++UID; }` is cheaper and avoids the dependency.
+    uint256 private UID;
 
     function nextID() private returns(uint256) {
-       uint256 ID = UID.current();
-       UID.increment();
+       uint256 ID = UID;
+       unchecked { ++UID; }
        return ID;
     }
 
@@ -50,6 +50,18 @@ contract DAO {
         return address(newRequester);
     }
 
+    /// @notice Returns up to `Requirements.canditatesToReturn` trainers matching
+    ///         the given requirements.
+    /// @dev SCALABILITY NOTE: this performs a linear O(n) scan over
+    ///      `registeredTrainers`, and for each candidate calls `isMatch`, which
+    ///      itself loops over the required tags — so the worst case is
+    ///      O(n_trainers * n_tags). As a `view` it costs no gas when called
+    ///      off-chain via `eth_call`, but the wall-clock latency and the
+    ///      `eth_estimateGas` figure grow linearly with the number of
+    ///      registered trainers (see scripts/load_test_matching.ts and
+    ///      results/matching_load_test.json). For thousands of trainers this is
+    ///      the dominant matching-phase bottleneck; an indexed/off-chain index
+    ///      would be required to scale.
     function matchTrainers (DataTypes.JobRequirements memory Requirements) external view returns(address  [] memory) {
         address [] memory candidates = new address[](Requirements.canditatesToReturn);
         uint256 candidatesCount = 0;

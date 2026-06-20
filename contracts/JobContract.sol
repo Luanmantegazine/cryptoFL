@@ -10,7 +10,6 @@ contract JobContract is ReentrancyGuard {
     uint256 private valueByUpdate;
     uint256 private numberOfUpdates;
     uint256 private updatesDone;
-    uint256 private withdrawAmount;
 
     bytes32 public initialModelHash;
     bytes32 public initialServerEndpointHash;
@@ -66,7 +65,6 @@ contract JobContract is ReentrancyGuard {
         updatesDone = 0;
         lockedAmount = 0;
         availableAmount = 0;
-        withdrawAmount = 0;
         Status = DataTypes.Status.WaitingSignatures;
     }
 
@@ -88,7 +86,6 @@ contract JobContract is ReentrancyGuard {
         clientUpdateHashes.push(cidHash);
         updatesDone += 1;
         availableAmount += valueByUpdate;
-        withdrawAmount += valueByUpdate;
         if (updatesDone == numberOfUpdates) {
             Status = DataTypes.Status.Fulfilled;
         }
