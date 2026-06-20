@@ -8,7 +8,7 @@ from web3 import Web3
 from eth_account import Account
 from eth_utils import keccak
 
-from deployments import resolve_address
+from .deployments import resolve_address
 
 load_dotenv()
 
@@ -107,10 +107,24 @@ def make_offer(description: str, model_cid: str, value_by_update_wei: int,
     return _send(fn)
 
 
-def get_pending_offer_ids_for(trainer_owner_addr: str):
-    return DAO.functions.getPendingOfferIdsFor(
-        Web3.to_checksum_address(trainer_owner_addr)
-    ).call()
+def get_pending_offer_ids_for(trainer_owner_addr: str | None = None):
+    """IDs de ofertas pendentes do trainer = signer atual (msg.sender).
+
+    `DAO.sol` expõe `getPendingOffers()` (sem argumento; usa `msg.sender` e
+    exige `isTrainer(msg.sender)`), não `getPendingOfferIdsFor(addr)`. A
+    consulta é portanto sempre relativa ao `acct` ativo (PRIVATE_KEY).
+    `trainer_owner_addr` é mantido por compatibilidade; se informado, deve
+    coincidir com o signer atual.
+    """
+    if (
+        trainer_owner_addr
+        and Web3.to_checksum_address(trainer_owner_addr) != acct.address
+    ):
+        raise ValueError(
+            "getPendingOffers() usa msg.sender — para consultar outro trainer "
+            "troque o signer (PRIVATE_KEY)."
+        )
+    return DAO.functions.getPendingOffers().call({"from": acct.address})
 
 
 def accept_offer(offer_id: int):
@@ -122,7 +136,12 @@ def sign_job_contract(job_addr: str, total_amount_wei: int = 0):
 
 
 def get_offer_details(offer_id: int):
-    return DAO.functions.getOfferDetailsFor(acct.address, int(offer_id)).call({"from": acct.address})
+    """Detalhes de uma oferta pendente do signer atual.
+
+    `DAO.sol` expõe `getOfferDetails(uint256)` (usa `msg.sender`), não
+    `getOfferDetailsFor(address, uint256)`.
+    """
+    return DAO.functions.getOfferDetails(int(offer_id)).call({"from": acct.address})
 
 
 def get_requester_contract(account: str) -> str:

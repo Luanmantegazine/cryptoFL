@@ -8,11 +8,16 @@ import time
 from .models import get_model
 from .datasets import load_mnist, load_dataset
 from .ipfs import ipfs_get_numpy, ipfs_add_numpy
-from .onchain_job import job_send_update
+# NOTE: `.onchain_job` (web3 + asserts on RPC_URL/PRIVATE_KEY/JOB_ABI_PATH) is
+# imported lazily inside fit() so that SKIP_IPFS / no_ipfs / baseline clients
+# run without an RPC endpoint or a deployed contract.
 
+SKIP_IPFS = os.getenv("SKIP_IPFS", "false").lower() == "true"
 
 JOB_ADDR = os.getenv("JOB_ADDR")
-assert JOB_ADDR, "JOB_ADDR não encontrado no .env"
+# Só o fluxo `full` (com on-chain) exige JOB_ADDR.
+if not SKIP_IPFS:
+    assert JOB_ADDR, "JOB_ADDR não encontrado no .env (ou rode com SKIP_IPFS=true)"
 
 DATASET_NAME = os.getenv("DATASET", "mnist")
 MODEL_NAME = os.getenv("MODEL", "mnistnet")
@@ -21,7 +26,6 @@ ALPHA = float(os.getenv("DIRICHLET_ALPHA", "0.5"))
 MALICIOUS = os.getenv("MALICIOUS", "false").lower() == "true"
 ATTACK_TYPE = os.getenv("ATTACK_TYPE", "label_flip")  # "label_flip" | "noise" | "zero"
 ATTACK_PROB = float(os.getenv("ATTACK_PROB", "1.0"))
-SKIP_IPFS = os.getenv("SKIP_IPFS", "false").lower() == "true"
 
 _NUM_CLASSES_BY_DATASET = {"mnist": 10, "cifar10": 10}
 _VALID_ATTACKS = {"label_flip", "noise", "zero"}
@@ -142,6 +146,7 @@ class MNISTClient(fl.client.NumPyClient):
             )
             print(f"[Cliente {self.node_id}] Publicando update: {cid_up}")
             try:
+                from .onchain_job import job_send_update  # import tardio (só `full`)
                 r = job_send_update(JOB_ADDR, cid_up)
                 tx_hash = r.get("hash")
                 print(f"[Cliente {self.node_id}] Tx enviada: {tx_hash}")

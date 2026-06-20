@@ -63,7 +63,8 @@ class BaselineMetricsCollector:
         accuracy=None,
         client_metrics=None,
         aggregated_metrics=None,
-        train_time_total_s=None,
+        aggregate_time_s=None,
+        train_time_round_s=None,
     ):
         round_data = {
             "round": round_num,
@@ -73,6 +74,11 @@ class BaselineMetricsCollector:
             "gas_eth": None,
             "tx_hash": None,
             "ipfs_cid": None,
+            # Ver Tarefa 1.2: aggregate_time_s = só a agregação FedAvg (~0.01s);
+            # train_time_round_s = tempo de treino do round = max(train_time
+            # dos clientes), pois treinam em paralelo.
+            "aggregate_time_s": aggregate_time_s,
+            "train_time_round_s": train_time_round_s,
         }
 
         if accuracy is not None:
@@ -85,9 +91,6 @@ class BaselineMetricsCollector:
 
         if aggregated_metrics is not None:
             round_data["aggregated_metrics"] = aggregated_metrics
-
-        if train_time_total_s is not None:
-            round_data["train_time_total_s"] = train_time_total_s
 
         self.metrics["rounds"].append(round_data)
 
@@ -150,8 +153,6 @@ class BaselineFLStrategy(fl.server.strategy.FedAvg):
         print(f" [BASELINE] ROUND {server_round}/{ROUNDS}")
         print(f"{'=' * 70}")
 
-        start = time.time()
-
         client_metrics = []
         for idx, (_, fit_res) in enumerate(results, start=1):
             m = dict(fit_res.metrics or {})
@@ -162,11 +163,19 @@ class BaselineFLStrategy(fl.server.strategy.FedAvg):
             entry.update(m)
             client_metrics.append(entry)
 
+        # train_time_round_s = max(train_time dos clientes) — treinam em paralelo.
+        client_train_times = [
+            float(c.get("train_time", 0.0)) for c in client_metrics
+            if c.get("train_time") is not None
+        ]
+        train_time_round_s = max(client_train_times) if client_train_times else None
+
+        # aggregate_time_s mede SOMENTE a agregação FedAvg (não o treino).
+        agg_start = time.time()
         aggregated_parameters, aggregated_metrics = super().aggregate_fit(
             server_round, results, failures
         )
-
-        elapsed = time.time() - start
+        aggregate_time_s = time.time() - agg_start
 
         accuracy = None
         if aggregated_metrics and "accuracy" in aggregated_metrics:
@@ -179,10 +188,13 @@ class BaselineFLStrategy(fl.server.strategy.FedAvg):
             accuracy=accuracy,
             client_metrics=client_metrics,
             aggregated_metrics=aggregated_metrics,
-            train_time_total_s=elapsed,
+            aggregate_time_s=aggregate_time_s,
+            train_time_round_s=train_time_round_s,
         )
 
-        print(f" [BASELINE] Round {server_round} concluído em {elapsed:.2f}s")
+        _ttr = train_time_round_s if train_time_round_s is not None else 0.0
+        print(f" [BASELINE] Round {server_round}: train≈{_ttr:.2f}s  "
+              f"agg={aggregate_time_s:.3f}s")
         return aggregated_parameters, aggregated_metrics
 
 
@@ -289,10 +301,10 @@ def main_server():
     print("=" * 70)
     for r in strategy.metrics.metrics["rounds"]:
         acc = r.get("accuracy")
-        t = r.get("train_time_total_s")
+        t = r.get("train_time_round_s")
         acc_str = f"{acc:.4f}" if acc is not None else "n/a"
         t_str = f"{t:.2f}s" if t is not None else "n/a"
-        print(f"  Round {r['round']:>2}: accuracy={acc_str}  agg_time={t_str}")
+        print(f"  Round {r['round']:>2}: accuracy={acc_str}  train_time={t_str}")
     print(f"\n Tempo total do experimento: {total_elapsed:.2f}s")
     print(f" Acurácia final: {strategy.metrics.metrics['final_accuracy']:.4f}")
 

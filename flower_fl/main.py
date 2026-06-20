@@ -2,24 +2,26 @@ import subprocess
 import time
 import os
 
-os.chdir(os.path.dirname(os.path.abspath(__file__)))
+# Roda a partir da raiz do repositório (onde estão hardhat.config.ts e o pacote
+# flower_fl), de modo que os módulos sejam invocados como `python -m flower_fl.*`.
+REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+os.chdir(REPO_ROOT)
 
 
 def run_experiment():
     print("--- FASE 1: Implantando Contrato DAO ---")
     subprocess.run(
         ["npx", "hardhat", "run", "scripts/deploy-dao.ts", "--network", "localhost"],
-        cwd=".."
     )
 
     print("\n--- FASE 2: Criando Job ---")
-    subprocess.run(["python", "deploy-job.py"])
+    subprocess.run(["python", "-m", "flower_fl.deploy_job"])
 
     # Iniciar servidor
     print("\n--- FASE 3: Iniciando Servidor Flower ---")
     server_log = open("server.log", "w")
     server = subprocess.Popen(
-        ["python", "server.py"],
+        ["python", "-m", "flower_fl.server"],
         stdout=server_log,
         stderr=subprocess.STDOUT
     )
@@ -35,9 +37,10 @@ def run_experiment():
         print(f"Iniciando cliente {i}...")
         log_file = open(f"client_{i}.log", "w")
         client = subprocess.Popen(
-            ["python", "client.py"],
+            ["python", "-m", "flower_fl.client"],
             stdout=log_file,
-            stderr=subprocess.STDOUT
+            stderr=subprocess.STDOUT,
+            env={**os.environ, "NODE_ID": str(i), "NUM_NODES": str(num_clients)},
         )
         clients.append(client)
         client_logs.append(log_file)

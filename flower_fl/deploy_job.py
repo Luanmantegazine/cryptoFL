@@ -4,13 +4,13 @@ from dotenv import find_dotenv, set_key
 from eth_account import Account
 
 try:
-    import onchain_dao
+    from . import onchain_dao
 except ImportError:
     print("Erro: Não foi possível importar 'onchain_dao'.")
-    print("Certifique-se de que 'deploy-job.py' e 'onchain_dao.py' estão na mesma pasta.")
+    print("Rode como módulo do pacote: python -m flower_fl.deploy_job")
     sys.exit(1)
 
-from onchain_dao import (
+from .onchain_dao import (
     register_requester,
     register_trainer,
     make_offer,
