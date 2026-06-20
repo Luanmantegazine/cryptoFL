@@ -1,0 +1,18 @@
+
+======================================================================
+ BASELINE CLIENT 2/2 — conectando em 0.0.0.0:8081
+======================================================================
+
+[Cliente 2] Modelo=mnistnet  Dataset=mnist
+[Dataset] Node 2: índices 40000-60000 (20000 amostras)
+[Cliente 2] Treino: 20000 amostras
+[Cliente 2] Teste:  10000 amostras
+INFO flwr 2026-06-19 20:58:49,130 | grpc.py:52 | Opened insecure gRPC connection (no certificates were passed)
+DEBUG flwr 2026-06-19 20:58:49,132 | connection.py:55 | ChannelConnectivity.IDLE
+DEBUG flwr 2026-06-19 20:58:49,134 | connection.py:55 | ChannelConnectivity.CONNECTING
+DEBUG flwr 2026-06-19 20:58:49,142 | connection.py:55 | ChannelConnectivity.READY
+[BaselineClient 2] Rodada ?: treinando...
+[BaselineClient 2] Rodada ?: treinando...
+[BaselineClient 2] Rodada ?: treinando...
+DEBUG flwr 2026-06-19 21:01:03,194 | connection.py:220 | gRPC channel closed
+INFO flwr 2026-06-19 21:01:03,194 | app.py:398 | Disconnect and shut down

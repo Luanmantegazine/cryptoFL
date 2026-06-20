@@ -1,0 +1,17 @@
+
+======================================================================
+ CLIENTE 1/1
+======================================================================
+
+[Cliente 1] Modelo=mnistnet  Dataset=mnist
+[Dataset] Node 1: índices 30000-60000 (30000 amostras)
+[Cliente 1] Treino: 30000 amostras
+[Cliente 1] Teste:  10000 amostras
+INFO flwr 2026-06-20 00:10:31,426 | grpc.py:52 | Opened insecure gRPC connection (no certificates were passed)
+DEBUG flwr 2026-06-20 00:10:31,427 | connection.py:55 | ChannelConnectivity.IDLE
+DEBUG flwr 2026-06-20 00:10:31,428 | connection.py:55 | ChannelConnectivity.CONNECTING
+DEBUG flwr 2026-06-20 00:10:31,431 | connection.py:55 | ChannelConnectivity.READY
+[Cliente 1] Rodada 1: Iniciando treino...
+[Cliente 1] SKIP_IPFS: update não publicado no IPFS nem on-chain
+DEBUG flwr 2026-06-20 00:11:10,741 | connection.py:220 | gRPC channel closed
+INFO flwr 2026-06-20 00:11:10,741 | app.py:398 | Disconnect and shut down

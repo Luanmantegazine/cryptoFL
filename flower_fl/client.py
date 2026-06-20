@@ -155,7 +155,6 @@ class MNISTClient(fl.client.NumPyClient):
 
         # Monta dicionário de métricas somente com tipos válidos
         metrics = {
-            "cid": cid_up,
             "avg_loss": float(avg_loss),
             "batches": int(batch_count),
             "loss": float(avg_loss),
@@ -167,7 +166,9 @@ class MNISTClient(fl.client.NumPyClient):
             "is_malicious": int(MALICIOUS),
             "attack_type": ATTACK_TYPE if MALICIOUS else "none",
         }
-        # Só adiciona tx_hash se existir
+        # Só adiciona cid/tx_hash se existirem (ConfigsRecord do Flower rejeita None)
+        if cid_up is not None:
+            metrics["cid"] = cid_up
         if tx_hash is not None:
             metrics["tx_hash"] = str(tx_hash)
 

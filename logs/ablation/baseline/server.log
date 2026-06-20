@@ -1,74 +1,54 @@
-/opt/miniconda3/lib/python3.10/site-packages/eth_keyfile/__init__.py:3: DeprecationWarning: pkg_resources is deprecated as an API. See https://setuptools.pypa.io/en/latest/pkg_resources.html
-  import pkg_resources
-/opt/miniconda3/lib/python3.10/site-packages/web3/providers/websocket/websocket.py:21: DeprecationWarning: websockets.client.connect is deprecated
-  from websockets.client import (
-/opt/miniconda3/lib/python3.10/site-packages/websockets/legacy/__init__.py:6: DeprecationWarning: websockets.legacy is deprecated; see https://websockets.readthedocs.io/en/stable/howto/upgrade.html for upgrade instructions
-  warnings.warn(  # deprecated in 14.0 - 2024-11-09
-/opt/miniconda3/lib/python3.10/site-packages/web3/providers/websocket/websocket_v2.py:18: DeprecationWarning: websockets.client.connect is deprecated
-  from websockets.client import (
-/opt/miniconda3/lib/python3.10/site-packages/web3/providers/persistent.py:10: DeprecationWarning: websockets.WebSocketClientProtocol is deprecated
-  from websockets import (
-[93mWARNING [0m:   DEPRECATED FEATURE: flwr.server.start_server() is deprecated.
-	Instead, use the `flower-superlink` CLI command to start a SuperLink as shown below:
-
-		$ flower-superlink --insecure
-
-	To view usage and all available options, run:
-
-		$ flower-superlink --help
-
-	Using `start_server()` is deprecated.
-
-            This is a deprecated feature. It will be removed
-            entirely in future versions of Flower.
-        
-[92mINFO [0m:      Starting Flower server, config: num_rounds=2, no round_timeout
-[92mINFO [0m:      Flower ECE: gRPC server running (2 rounds), SSL is disabled
-[92mINFO [0m:      [INIT]
-[92mINFO [0m:      Requesting initial parameters from one random client
-[92mINFO [0m:      Received initial parameters from one random client
-[92mINFO [0m:      Starting evaluation of initial global parameters
-[92mINFO [0m:      Evaluation returned no results (`None`)
-[92mINFO [0m:      
-[92mINFO [0m:      [ROUND 1]
-[92mINFO [0m:      configure_fit: strategy sampled 2 clients (out of 2)
-[92mINFO [0m:      aggregate_fit: received 2 results and 0 failures
-[92mINFO [0m:      configure_evaluate: no clients selected, skipping evaluation
-[92mINFO [0m:      
-[92mINFO [0m:      [ROUND 2]
-[92mINFO [0m:      configure_fit: strategy sampled 2 clients (out of 2)
-[92mINFO [0m:      aggregate_fit: received 2 results and 0 failures
-[92mINFO [0m:      configure_evaluate: no clients selected, skipping evaluation
-[92mINFO [0m:      
-[92mINFO [0m:      [SUMMARY]
-[92mINFO [0m:      Run finished 2 round(s) in 115.48s
-[92mINFO [0m:      	History (metrics, distributed, fit):
-[92mINFO [0m:      	{'accuracy': [(1, 0.9211333333333334), (2, 0.96905)],
-[92mINFO [0m:      	 'loss': [(1, 0.25370916388933856), (2, 0.10509045541582844)]}
-[92mINFO [0m:      
 
 ======================================================================
  FLOWER FEDERATED LEARNING SERVER — BASELINE (sem blockchain/IPFS)
 ======================================================================
- ROUNDS=2  MIN_CLIENTS=2  PORT=0.0.0.0:8081
+ ROUNDS=3  MIN_CLIENTS=3  PORT=0.0.0.0:8081
+INFO flwr 2026-06-19 20:58:41,969 | app.py:163 | Starting Flower server, config: ServerConfig(num_rounds=3, round_timeout=None)
+INFO flwr 2026-06-19 20:58:41,976 | app.py:176 | Flower ECE: gRPC server running (3 rounds), SSL is disabled
+INFO flwr 2026-06-19 20:58:41,976 | server.py:89 | Initializing global parameters
+INFO flwr 2026-06-19 20:58:41,976 | server.py:276 | Requesting initial parameters from one random client
+INFO flwr 2026-06-19 20:58:47,096 | server.py:280 | Received initial parameters from one random client
+INFO flwr 2026-06-19 20:58:47,096 | server.py:91 | Evaluating initial parameters
+INFO flwr 2026-06-19 20:58:47,096 | server.py:104 | FL starting
+DEBUG flwr 2026-06-19 20:58:49,142 | server.py:222 | fit_round 1: strategy sampled 3 clients (out of 3)
+DEBUG flwr 2026-06-19 20:59:38,762 | server.py:236 | fit_round 1 received 3 results and 0 failures
 
 ======================================================================
- [BASELINE] ROUND 1/2
+ [BASELINE] ROUND 1/3
 ======================================================================
- [BASELINE] Round 1 concluído em 0.01s
+ [BASELINE] Round 1: train≈49.50s  agg=0.016s
+INFO flwr 2026-06-19 20:59:38,779 | server.py:171 | evaluate_round 1: no clients selected, cancel
+DEBUG flwr 2026-06-19 20:59:38,779 | server.py:222 | fit_round 2: strategy sampled 3 clients (out of 3)
+DEBUG flwr 2026-06-19 21:00:17,267 | server.py:236 | fit_round 2 received 3 results and 0 failures
 
 ======================================================================
- [BASELINE] ROUND 2/2
+ [BASELINE] ROUND 2/3
 ======================================================================
- [BASELINE] Round 2 concluído em 0.01s
+ [BASELINE] Round 2: train≈38.42s  agg=0.011s
+INFO flwr 2026-06-19 21:00:17,278 | server.py:171 | evaluate_round 2: no clients selected, cancel
+DEBUG flwr 2026-06-19 21:00:17,278 | server.py:222 | fit_round 3: strategy sampled 3 clients (out of 3)
+DEBUG flwr 2026-06-19 21:01:03,156 | server.py:236 | fit_round 3 received 3 results and 0 failures
 
- Métricas baseline salvas em: results/ablation_test/baseline/baseline_metrics.json
+======================================================================
+ [BASELINE] ROUND 3/3
+======================================================================
+ [BASELINE] Round 3: train≈45.81s  agg=0.010s
+INFO flwr 2026-06-19 21:01:03,166 | server.py:171 | evaluate_round 3: no clients selected, cancel
+INFO flwr 2026-06-19 21:01:03,166 | server.py:153 | FL finished in 136.070470377
+INFO flwr 2026-06-19 21:01:03,171 | app.py:226 | app_fit: losses_distributed []
+INFO flwr 2026-06-19 21:01:03,172 | app.py:227 | app_fit: metrics_distributed_fit {'accuracy': [(1, 0.9044833333333333), (2, 0.9629333333333333), (3, 0.9745166666666667)], 'loss': [(1, 0.30846710780163605), (2, 0.12506429655936857), (3, 0.08777451083674095)]}
+INFO flwr 2026-06-19 21:01:03,172 | app.py:228 | app_fit: metrics_distributed {}
+INFO flwr 2026-06-19 21:01:03,172 | app.py:229 | app_fit: losses_centralized []
+INFO flwr 2026-06-19 21:01:03,172 | app.py:230 | app_fit: metrics_centralized {}
+
+ Métricas baseline salvas em: results/ablation/baseline/baseline_metrics.json
 
 ======================================================================
  RESUMO BASELINE
 ======================================================================
-  Round  1: accuracy=0.9211  agg_time=0.01s
-  Round  2: accuracy=0.9690  agg_time=0.01s
+  Round  1: accuracy=0.9045  train_time=49.50s
+  Round  2: accuracy=0.9629  train_time=38.42s
+  Round  3: accuracy=0.9745  train_time=45.81s
 
- Tempo total do experimento: 120.60s
- Acurácia final: 0.9690
+ Tempo total do experimento: 141.22s
+ Acurácia final: 0.9745
