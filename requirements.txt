@@ -1,6 +1,17 @@
+# --- Federated learning core ---
 flwr==1.7.0
-numpy>=1.24.0
+torch>=2.0          # model training (CPU build is fine; see README for CPU-only wheels)
+torchvision>=0.15   # MNIST / CIFAR-10 datasets + ResNet-18
+numpy>=1.24,<2.0
+
+# --- Blockchain / on-chain interaction (only needed for the `full` flow) ---
 web3==6.20.1
 eth-account==0.8.0
+
+# --- IPFS upload + config ---
 python-dotenv==1.0.1
 requests==2.32.4
+
+# --- Plotting / experiment drivers ---
+matplotlib>=3.6     # all result figures (DPI 300)
+tabulate>=0.9       # optional: pretty multi_run summary tables (falls back if absent)

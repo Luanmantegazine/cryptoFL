@@ -154,8 +154,11 @@ def plot_metrics_publishable(metrics_file="results/server_metrics.json"):
     # ------------------------------
     # PLOT 6 – Total Examples per Round
     # ------------------------------
+    # Plota o número total de exemplos de treino por round (corrige bug que
+    # plotava `round_avg_loss`). Cor distinta do vermelho de loss/flagged para
+    # não confundir os dois gráficos.
     fig, ax = plt.subplots(figsize=PLOT_FIGSIZE)
-    ax.plot(rounds, round_avg_loss, marker="o", linewidth=2, color=PLOT_PALETTE["flagged"])
+    ax.plot(rounds, round_total_examples, marker="o", linewidth=2, color="#17becf")
     ax.set_xlabel("Round")
     ax.set_ylabel("Total Training Examples")
     ax.set_title("Total Examples Processed per Round")
@@ -208,8 +211,12 @@ def plot_metrics_publishable(metrics_file="results/server_metrics.json"):
 
 
 def _round_total_time(round_data):
-    """Tempo total do round (preferindo `train_time_total_s`)."""
-    t = round_data.get("train_time_total_s")
+    """Tempo do round, preferindo `train_time_round_s` (= max train_time dos
+    clientes, que treinam em paralelo). Cai para o campo legado
+    `train_time_total_s` e, por fim, recalcula a partir de client_metrics."""
+    t = round_data.get("train_time_round_s")
+    if t is None:
+        t = round_data.get("train_time_total_s")
     if t is not None:
         return float(t)
     cm = round_data.get("client_metrics") or []
@@ -629,25 +636,156 @@ def plot_ablation(summary_file, output_prefix=""):
     print(f"Generated: {out_time}, {out_gas}")
 
 
-if __name__ == "__main__":
-    Path("results/figures").mkdir(parents=True, exist_ok=True)
-    plot_metrics_publishable()
+def _load_json(path):
+    p = Path(path)
+    if not p.exists():
+        return None
+    try:
+        with open(p) as f:
+            return json.load(f)
+    except (OSError, json.JSONDecodeError):
+        return None
 
+
+def _panel_accuracy(ax, metrics_file, label):
+    """Accuracy per round from a *_metrics.json file."""
+    data = _load_json(metrics_file)
+    if not data:
+        ax.text(0.5, 0.5, "no accuracy data", ha="center", va="center")
+        ax.set_axis_off()
+        return False
+    rounds = [r for r in data.get("rounds", []) if r.get("round", 0) > 0]
+    xs = [r["round"] for r in rounds]
+    ys = [r.get("accuracy") or (r.get("aggregated_metrics") or {}).get("accuracy", 0)
+          for r in rounds]
+    ax.plot(xs, ys, marker="o", linewidth=2, color=PLOT_PALETTE["full"], label=label)
+    ax.set_xlabel("Round")
+    ax.set_ylabel("Global accuracy")
+    ax.set_title("(a) Accuracy per round")
+    ax.yaxis.set_major_formatter(mtick.PercentFormatter(1.0))
+    ax.xaxis.set_major_locator(mtick.MaxNLocator(integer=True))
+    ax.legend(fontsize=8)
+    return True
+
+
+def _panel_ablation(ax, summary_file):
+    """Mean round time per mode from ablation_summary.json."""
+    summary = _load_json(summary_file)
+    results = (summary or {}).get("results", {})
+    order = [m for m in ("baseline", "no_ipfs", "full") if m in results]
+    if not order:
+        ax.text(0.5, 0.5, "no ablation data", ha="center", va="center")
+        ax.set_axis_off()
+        return False
+    times = [float(results[m].get("mean_round_time_s", 0.0)) for m in order]
+    colors = {"baseline": PLOT_PALETTE["baseline"], "no_ipfs": PLOT_PALETTE["malicious"],
+              "full": PLOT_PALETTE["full"]}
+    ax.bar(order, times, color=[colors.get(m, PLOT_PALETTE["gas"]) for m in order])
+    for i, v in enumerate(times):
+        ax.text(i, v, f"{v:.1f}s", ha="center", va="bottom", fontsize=9)
+    ax.set_ylabel("Mean round time (s)")
+    ax.set_title("(b) Time overhead by mode (ablation)")
+    return True
+
+
+def _panel_security(ax, summary_file):
+    """Accuracy drop (mean ± std) vs malicious fraction from security_summary.json."""
+    summary = _load_json(summary_file)
+    results = (summary or {}).get("results", {})
+    if not results:
+        ax.text(0.5, 0.5, "no security data", ha="center", va="center")
+        ax.set_axis_off()
+        return False
+    pairs = sorted(((float(k), v) for k, v in results.items()), key=lambda kv: kv[0])
+    pcts = [p for p, _ in pairs]
+    drops = [float(v.get("accuracy_drop", 0.0)) for _, v in pairs]
+    errs = [float(v.get("std_accuracy_drop", 0.0)) for _, v in pairs]
+    width = (max(pcts) - min(pcts)) / max(len(pcts), 2) * 0.6 if len(pcts) > 1 else 0.1
+    ax.bar(pcts, drops, width=width, yerr=errs, capsize=4,
+           color=PLOT_PALETTE["flagged"], alpha=0.8, label="accuracy drop ± std")
+    atype = (summary.get("config", {}) or {}).get("attack_type", "")
+    ax.set_xlabel("Malicious clients fraction")
+    ax.set_ylabel("Accuracy drop")
+    ax.set_title(f"(c) Robustness vs malicious fraction\n(attack={atype})")
+    ax.legend(fontsize=8)
+    return True
+
+
+def _panel_matching(ax, load_test_file):
+    """matchTrainers time(ms) + estimated gas vs N from matching_load_test.json."""
+    data = _load_json(load_test_file)
+    measurements = (data or {}).get("measurements", [])
+    if not measurements:
+        ax.text(0.5, 0.5, "no matching data", ha="center", va="center")
+        ax.set_axis_off()
+        return False
+    ns = [m["n_trainers"] for m in measurements]
+    times = [m["time_ms"] for m in measurements]
+    gas = [int(m["gas_estimated"]) for m in measurements]
+    ax.plot(ns, times, marker="o", linewidth=2, color=PLOT_PALETTE["full"],
+            label="time (ms)")
+    ax.set_xlabel("Registered trainers (N)")
+    ax.set_ylabel("matchTrainers time (ms)", color=PLOT_PALETTE["full"])
+    ax.tick_params(axis="y", labelcolor=PLOT_PALETTE["full"])
+    ax.set_title("(d) Matching scalability (O(n))")
+    ax2 = ax.twinx()
+    ax2.plot(ns, gas, marker="s", linewidth=2, color=PLOT_PALETTE["gas"],
+             label="estimated gas")
+    ax2.set_ylabel("Estimated gas", color=PLOT_PALETTE["gas"])
+    ax2.tick_params(axis="y", labelcolor=PLOT_PALETTE["gas"])
+    lines = ax.get_lines() + ax2.get_lines()
+    ax.legend(lines, [l.get_label() for l in lines], fontsize=8, loc="upper left")
+    return True
+
+
+def plot_experiment_summary(
+    output_path="results/figures/experiment_results_complete.png",
+    accuracy_metrics_file="results/ablation/baseline/server_metrics.json",
+    ablation_summary="results/ablation/ablation_summary.json",
+    security_summary="results/security/security_summary.json",
+    matching_load_test="results/matching_load_test.json",
+):
+    """Single consolidated, readable summary figure (replaces the old dense
+    Figure 4). 2x2 grid: (a) accuracy/round, (b) ablation time overhead,
+    (c) robustness vs malicious fraction, (d) matching scalability. Every panel
+    has axis labels, a title and (where multiple series exist) a legend.
+    Missing inputs render a 'no data' placeholder instead of failing."""
+    Path(output_path).parent.mkdir(parents=True, exist_ok=True)
+    fig, axes = plt.subplots(2, 2, figsize=(13, 9))
+    _panel_accuracy(axes[0][0], accuracy_metrics_file, "FL (MNIST)")
+    _panel_ablation(axes[0][1], ablation_summary)
+    _panel_security(axes[1][0], security_summary)
+    _panel_matching(axes[1][1], matching_load_test)
+    fig.suptitle("CryptoFL — experiment summary", fontsize=15, fontweight="bold")
+    fig.tight_layout(rect=(0, 0, 1, 0.97))
+    _save(fig, output_path)
+    print(f"Generated consolidated summary: {output_path}")
+
+
+if __name__ == "__main__":
+    FIG = "results/figures/"
+    Path(FIG).mkdir(parents=True, exist_ok=True)
+
+    if Path("results/server_metrics.json").exists():
+        plot_metrics_publishable()
     if Path("results/baseline_metrics.json").exists():
         plot_baseline_comparison(
             "results/server_metrics.json",
             "results/baseline_metrics.json",
-            output_prefix=""
+            output_prefix=FIG,
         )
     if Path("results/multi_run/summary.json").exists():
-        plot_multi_run_summary("results/multi_run/summary.json", output_prefix="")
+        plot_multi_run_summary("results/multi_run/summary.json", output_prefix=FIG)
     if Path("results/server_metrics_breakdown.json").exists():
-        plot_gas_breakdown("results/server_metrics_breakdown.json", output_prefix="")
+        plot_gas_breakdown("results/server_metrics_breakdown.json", output_prefix=FIG)
     if Path("results/server_metrics.json").exists():
-        plot_update_norms("results/server_metrics.json", output_prefix="")
+        plot_update_norms("results/server_metrics.json", output_prefix=FIG)
     if Path("results/security/security_summary.json").exists():
-        plot_security_summary("results/security/security_summary.json", output_prefix="")
+        plot_security_summary("results/security/security_summary.json", output_prefix=FIG)
     if Path("results/multi_run").exists():
-        plot_client_accuracy_individual("results/multi_run", "results/figures")
+        plot_client_accuracy_individual("results/multi_run", FIG)
     if Path("results/ablation/ablation_summary.json").exists():
-        plot_ablation("results/ablation/ablation_summary.json", output_prefix="")
+        plot_ablation("results/ablation/ablation_summary.json", output_prefix=FIG)
+
+    # Always (re)generate the consolidated summary figure from whatever exists.
+    plot_experiment_summary()

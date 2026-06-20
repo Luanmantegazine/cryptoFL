@@ -119,6 +119,9 @@ def run_full(num_clients: int, rounds: int, seed: int, metrics_file: Path,
     base_env["METRICS_FILE"] = str(metrics_file)
     base_env["GRPC_POLL_STRATEGY"] = "poll"
     base_env["GRPC_ENABLE_FORK_SUPPORT"] = "1"
+    for _v in ("OMP_NUM_THREADS", "MKL_NUM_THREADS",
+               "OPENBLAS_NUM_THREADS", "NUMEXPR_NUM_THREADS"):
+        base_env.setdefault(_v, "1")
 
     server_log = log_dir / "server.log"
     server = _spawn(
@@ -163,6 +166,9 @@ def run_baseline(num_clients: int, rounds: int, seed: int, metrics_file: Path,
     base_env["BASELINE_SERVER_ADDRESS"] = "0.0.0.0:8081"
     base_env["GRPC_POLL_STRATEGY"] = "poll"
     base_env["GRPC_ENABLE_FORK_SUPPORT"] = "1"
+    for _v in ("OMP_NUM_THREADS", "MKL_NUM_THREADS",
+               "OPENBLAS_NUM_THREADS", "NUMEXPR_NUM_THREADS"):
+        base_env.setdefault(_v, "1")
 
     server_log = log_dir / "baseline_server.log"
     server = _spawn(
@@ -211,7 +217,11 @@ def _extract_run_stats(metrics_file: Path) -> Dict[str, float]:
     for r in data.get("rounds", []):
         if r.get("round", 0) == 0:
             continue  # round de inicialização, sem treino
-        t = r.get("train_time_total_s")
+        # Preferir train_time_round_s (= max train_time dos clientes); cair
+        # para o campo legado train_time_total_s e, por fim, recalcular.
+        t = r.get("train_time_round_s")
+        if t is None:
+            t = r.get("train_time_total_s")
         if t is None:
             cm = r.get("client_metrics") or []
             times = [c.get("train_time", 0.0) for c in cm]

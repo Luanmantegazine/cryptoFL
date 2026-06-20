@@ -12,10 +12,13 @@ from pathlib import Path
 import flwr as fl
 from flwr.common import parameters_to_ndarrays
 
-from models import MNISTNet
-from onchain_job import job_update_global
-from ipfs import ipfs_add_numpy
-from utils import ROUNDS
+from .models import MNISTNet, get_model
+from .utils import ROUNDS
+
+# NOTE: `onchain_job` (web3) and `ipfs` (Pinata/requests) are imported lazily
+# inside the publish paths below. This lets the SKIP_IPFS / no_ipfs / baseline
+# runs import and start the server WITHOUT an RPC endpoint, a private key, or a
+# Pinata JWT — only the `full` on-chain flow pulls those modules in.
 
 
 # ==============================
@@ -28,12 +31,24 @@ DATASET_NAME = os.getenv("DATASET", "mnist")
 MODEL_NAME = os.getenv("MODEL", "mnistnet")
 DETECT_ANOMALIES = os.getenv("DETECT_ANOMALIES", "true").lower() == "true"
 NORM_THRESHOLD_STD = float(os.getenv("NORM_THRESHOLD_STD", "2.0"))
-# updates com norma > mean + N*std são marcados como suspeitos
+# Anomaly detector (see aggregate_fit): flags updates whose L2 norm exceeds
+# mean + NORM_THRESHOLD_STD*std across a round.
+#
+# SCOPE / THREAT MODEL: this heuristic targets NORM-INFLATING attacks — i.e.
+# `noise` (random images blow up gradients/weights) and `zero` — where a
+# poisoned update has an anomalously large L2 norm. It is ORTHOGONAL to
+# `label_flip`: flipping labels produces a perfectly normal-magnitude update,
+# so the norm check cannot (and does not) flag it. To get a non-zero
+# `n_flagged_total` in security experiments, use --attack-type noise. Defending
+# label-flipping requires a different signal (e.g. validation accuracy, update
+# direction / cosine, or robust aggregation), which is left as future work.
 SKIP_IPFS = os.getenv("SKIP_IPFS", "false").lower() == "true"
 # Quando True, não publica no IPFS nem on-chain (modo `no_ipfs` da ablação).
 
-if not JOB_ADDRS:
-    raise RuntimeError("Configure JOB_ADDRS no .env")
+if not SKIP_IPFS and not JOB_ADDRS:
+    raise RuntimeError(
+        "Configure JOB_ADDRS no .env (ou rode com SKIP_IPFS=true para o modo no_ipfs)."
+    )
 
 
 # ==============================
@@ -67,6 +82,8 @@ class MetricsCollector:
         mean_update_norm=None,
         std_update_norm=None,
         n_flagged=None,
+        aggregate_time_s=None,
+        train_time_round_s=None,
     ):
         round_data = {
             "round": round_num,
@@ -80,6 +97,12 @@ class MetricsCollector:
             "mean_update_norm": mean_update_norm,
             "std_update_norm": std_update_norm,
             "n_flagged": n_flagged,
+            # Tempos separados (ver Tarefa 1.2): aggregate_time_s mede só a
+            # agregação FedAvg no servidor (~0.01s); train_time_round_s é o
+            # tempo de treino do round = max(train_time dos clientes), pois os
+            # clientes treinam em paralelo.
+            "aggregate_time_s": aggregate_time_s,
+            "train_time_round_s": train_time_round_s,
         }
 
         if accuracy is not None:
@@ -194,7 +217,6 @@ class BlockchainFLStrategy(fl.server.strategy.FedAvg):
 
         try:
             print(f"[1/3] Criando modelo: {MODEL_NAME}")
-            from models import get_model  # import absoluto, mantendo padrão existente
             model = get_model(MODEL_NAME)
             initial_params = [val.cpu().numpy() for _, val in model.state_dict().items()]
             print(f" ✓ {len(initial_params)} camadas")
@@ -214,6 +236,10 @@ class BlockchainFLStrategy(fl.server.strategy.FedAvg):
                 )
                 print("\n Modelo inicial pronto (sem IPFS/blockchain)!\n")
                 return
+
+            # Imports tardios: só o fluxo `full` (com IPFS + on-chain) os carrega.
+            from .ipfs import ipfs_add_numpy
+            from .onchain_job import job_update_global
 
             print("[2/3] Publicando no IPFS...")
             self.latest_cid = ipfs_add_numpy(initial_params, "global_round0.npz")
@@ -309,10 +335,22 @@ class BlockchainFLStrategy(fl.server.strategy.FedAvg):
             if n_flagged > 0:
                 print(f"[Servidor] ⚠ Round {server_round}: {n_flagged}/{len(results)} updates suspeitos (normas acima de {threshold:.2f})")
 
+        # train_time_round_s = tempo de treino do round. Como os clientes
+        # treinam EM PARALELO, o tempo de parede do round é ~max(train_time).
+        client_train_times = [
+            float(c.get("train_time", 0.0)) for c in client_metrics
+            if c.get("train_time") is not None
+        ]
+        train_time_round_s = max(client_train_times) if client_train_times else None
+
         # 3. Agregar parâmetros (FedAvg pleno — não removemos clientes flagged).
+        # aggregate_time_s mede SOMENTE a agregação FedAvg server-side (~0.01s),
+        # não o treino dos clientes (ver Tarefa 1.2).
+        _agg_t0 = time.time()
         aggregated_parameters, aggregated_metrics = super().aggregate_fit(
             server_round, results, failures
         )
+        aggregate_time_s = time.time() - _agg_t0
 
         accuracy = None
         if aggregated_metrics and "accuracy" in aggregated_metrics:
@@ -342,9 +380,15 @@ class BlockchainFLStrategy(fl.server.strategy.FedAvg):
                     mean_update_norm=mean_norm,
                     std_update_norm=std_norm,
                     n_flagged=n_flagged,
+                    aggregate_time_s=aggregate_time_s,
+                    train_time_round_s=train_time_round_s,
                 )
                 print(f"\n Round {server_round} concluído (SKIP_IPFS)!")
                 return aggregated_parameters, aggregated_metrics
+
+            # Import tardio: só o fluxo `full` carrega IPFS + on-chain.
+            from .ipfs import ipfs_add_numpy
+            from .onchain_job import job_update_global
 
             # IPFS
             print(f"\n[1/2] Publicando no IPFS...")
@@ -384,6 +428,8 @@ class BlockchainFLStrategy(fl.server.strategy.FedAvg):
                         mean_update_norm=mean_norm,
                         std_update_norm=std_norm,
                         n_flagged=n_flagged,
+                        aggregate_time_s=aggregate_time_s,
+                        train_time_round_s=train_time_round_s,
                     )
 
             print(f"\n Round {server_round} concluído!")

@@ -92,6 +92,12 @@ def _make_base_env(mode: str, rounds: int, num_clients: int, metrics_file: Path)
     env["NUM_NODES"] = str(num_clients)
     env["GRPC_POLL_STRATEGY"] = "poll"
     env["GRPC_ENABLE_FORK_SUPPORT"] = "1"
+    # Cada cliente/servidor roda em processo próprio; limitamos as threads de
+    # BLAS/torch a 1 para evitar oversubscrição (N processos × T threads em
+    # poucos núcleos trava o treino). Respeita override do ambiente externo.
+    for _v in ("OMP_NUM_THREADS", "MKL_NUM_THREADS",
+               "OPENBLAS_NUM_THREADS", "NUMEXPR_NUM_THREADS"):
+        env.setdefault(_v, "1")
 
     if mode == "baseline":
         env["BASELINE_METRICS_FILE"] = str(metrics_file)
@@ -176,7 +182,11 @@ def _extract_stats(metrics_file: Path) -> Dict[str, float]:
     rounds = [r for r in data.get("rounds", []) if r.get("round", 0) > 0]
     times: List[float] = []
     for r in rounds:
-        t = r.get("train_time_total_s")
+        # Preferir train_time_round_s (= max train_time dos clientes); cair
+        # para o campo legado train_time_total_s e, por fim, recalcular.
+        t = r.get("train_time_round_s")
+        if t is None:
+            t = r.get("train_time_total_s")
         if t is None:
             cm = r.get("client_metrics") or []
             t = max((c.get("train_time", 0.0) for c in cm), default=0.0)
