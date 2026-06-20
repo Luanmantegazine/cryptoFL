@@ -154,8 +154,11 @@ def plot_metrics_publishable(metrics_file="results/server_metrics.json"):
     # ------------------------------
     # PLOT 6 – Total Examples per Round
     # ------------------------------
+    # Plota o número total de exemplos de treino por round (corrige bug que
+    # plotava `round_avg_loss`). Cor distinta do vermelho de loss/flagged para
+    # não confundir os dois gráficos.
     fig, ax = plt.subplots(figsize=PLOT_FIGSIZE)
-    ax.plot(rounds, round_avg_loss, marker="o", linewidth=2, color=PLOT_PALETTE["flagged"])
+    ax.plot(rounds, round_total_examples, marker="o", linewidth=2, color="#17becf")
     ax.set_xlabel("Round")
     ax.set_ylabel("Total Training Examples")
     ax.set_title("Total Examples Processed per Round")
@@ -208,8 +211,12 @@ def plot_metrics_publishable(metrics_file="results/server_metrics.json"):
 
 
 def _round_total_time(round_data):
-    """Tempo total do round (preferindo `train_time_total_s`)."""
-    t = round_data.get("train_time_total_s")
+    """Tempo do round, preferindo `train_time_round_s` (= max train_time dos
+    clientes, que treinam em paralelo). Cai para o campo legado
+    `train_time_total_s` e, por fim, recalcula a partir de client_metrics."""
+    t = round_data.get("train_time_round_s")
+    if t is None:
+        t = round_data.get("train_time_total_s")
     if t is not None:
         return float(t)
     cm = round_data.get("client_metrics") or []

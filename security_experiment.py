@@ -28,6 +28,7 @@ import argparse
 import json
 import os
 import shutil
+import statistics
 import subprocess
 import sys
 import time
@@ -39,6 +40,18 @@ from typing import Dict, List, Optional
 PYTHON = sys.executable or "python3"
 LOGS_DIR = Path("logs/security")
 VALID_ATTACKS = {"label_flip", "noise", "zero"}
+
+
+def _mean_std(values: List[float]) -> Dict[str, float]:
+    """Mean/std de uma lista (std amostral; 0.0 para <2 elementos)."""
+    if not values:
+        return {"mean": 0.0, "std": 0.0}
+    if len(values) == 1:
+        return {"mean": float(values[0]), "std": 0.0}
+    return {
+        "mean": float(statistics.fmean(values)),
+        "std": float(statistics.stdev(values)),
+    }
 
 
 # ---------------------------------------------------------------------------
@@ -119,6 +132,7 @@ def run_security_experiment(
     attack_prob: float,
     metrics_file: Path,
     log_dir: Path,
+    seed: int = 42,
 ) -> bool:
     """Spawn server + N clients (n_malicious dos quais maliciosos)."""
     base_env = os.environ.copy()
@@ -126,8 +140,13 @@ def run_security_experiment(
     base_env["MIN_CLIENTS"] = str(num_clients)
     base_env["NUM_NODES"] = str(num_clients)
     base_env["DETECT_ANOMALIES"] = "true"
+    base_env["SEED"] = str(seed)
     base_env["GRPC_POLL_STRATEGY"] = "poll"
     base_env["GRPC_ENABLE_FORK_SUPPORT"] = "1"
+    # Evita oversubscrição de threads (N processos em poucos núcleos).
+    for _v in ("OMP_NUM_THREADS", "MKL_NUM_THREADS",
+               "OPENBLAS_NUM_THREADS", "NUMEXPR_NUM_THREADS"):
+        base_env.setdefault(_v, "1")
 
     if mode == "baseline":
         base_env["BASELINE_METRICS_FILE"] = str(metrics_file)
@@ -198,9 +217,9 @@ def _extract_security_stats(metrics_file: Path) -> Dict[str, float]:
 
 
 def _print_table(rows: List[Dict[str, float]]) -> None:
-    headers = ["pct_malicious", "n_malicious", "final_accuracy",
-               "accuracy_drop", "n_flagged_total"]
-    widths = [max(len(h), 14) for h in headers]
+    headers = ["pct_malicious", "n_malicious", "acc_mean±std",
+               "drop_mean±std", "n_flagged_total"]
+    widths = [max(len(h), 16) for h in headers]
     line = "  ".join(h.ljust(widths[i]) for i, h in enumerate(headers))
     print(line)
     print("-" * len(line))
@@ -208,8 +227,8 @@ def _print_table(rows: List[Dict[str, float]]) -> None:
         cells = [
             f"{r['pct']:.2f}",
             str(r["n_malicious"]),
-            f"{r['final_accuracy']:.4f}",
-            f"{r['accuracy_drop']:.4f}",
+            f"{r['final_accuracy']:.4f}±{r.get('std_final_accuracy', 0.0):.4f}",
+            f"{r['accuracy_drop']:.4f}±{r.get('std_accuracy_drop', 0.0):.4f}",
             str(r["n_flagged_total"]),
         ]
         print("  ".join(c.ljust(widths[i]) for i, c in enumerate(cells)))
@@ -234,8 +253,16 @@ def main() -> int:
     )
     parser.add_argument("--attack-prob", type=float, default=1.0)
     parser.add_argument("--mode", choices=["baseline", "full"], default="baseline")
+    parser.add_argument(
+        "--repetitions", type=int, default=1,
+        help="Repetições por fração, com seeds distintas (mean ± std). "
+             "Single 3-round runs são ruidosas; use >=3 para std confiável.",
+    )
     parser.add_argument("--output-dir", type=str, default="results/security")
     args = parser.parse_args()
+
+    if args.repetitions < 1:
+        parser.error("--repetitions deve ser >= 1")
 
     try:
         pcts = [float(x.strip()) for x in args.malicious_pct.split(",") if x.strip()]
@@ -254,68 +281,95 @@ def main() -> int:
     started = datetime.now().isoformat()
     _print_header(
         f" SECURITY EXP  mode={args.mode}  N={args.clients}  rounds={args.rounds}  "
-        f"attack={args.attack_type}  prob={args.attack_prob}\n"
-        f" pcts={pcts}"
+        f"reps={args.repetitions}\n"
+        f" attack={args.attack_type}  prob={args.attack_prob}  pcts={pcts}"
     )
 
-    raw: Dict[float, Dict[str, float]] = {}
+    # raw[pct] = {"accs": [...], "flagged": [...], "n_malicious": int}
+    # Listas indexadas por repetição (seed=rep) para permitir pareamento
+    # clean-vs-malicious por seed ao calcular accuracy_drop.
+    raw: Dict[float, Dict] = {}
     for pct in pcts:
         n_mal = round(args.clients * pct)
-        sub = output_dir / f"pct{int(pct * 100)}"
-        sub.mkdir(parents=True, exist_ok=True)
-        log_sub = LOGS_DIR / f"pct{int(pct * 100)}"
+        accs: List[float] = []
+        flagged: List[int] = []
+        for rep in range(1, args.repetitions + 1):
+            seed = rep
+            sub = output_dir / f"pct{int(pct * 100)}" / f"rep{rep}"
+            sub.mkdir(parents=True, exist_ok=True)
+            log_sub = LOGS_DIR / f"pct{int(pct * 100)}" / f"rep{rep}"
 
-        if args.mode == "baseline":
-            target = sub / "baseline_metrics.json"
-        else:
-            target = sub / "server_metrics.json"
+            if args.mode == "baseline":
+                target = sub / "baseline_metrics.json"
+            else:
+                target = sub / "server_metrics.json"
 
-        _print_header(f" >> pct={pct:.2f}  n_malicious={n_mal}/{args.clients}")
-        ok = run_security_experiment(
-            mode=args.mode,
-            num_clients=args.clients,
-            rounds=args.rounds,
-            n_malicious=n_mal,
-            attack_type=args.attack_type,
-            attack_prob=args.attack_prob,
-            metrics_file=target,
-            log_dir=log_sub,
-        )
+            _print_header(
+                f" >> pct={pct:.2f}  n_malicious={n_mal}/{args.clients}  "
+                f"rep={rep}/{args.repetitions}  seed={seed}"
+            )
+            ok = run_security_experiment(
+                mode=args.mode,
+                num_clients=args.clients,
+                rounds=args.rounds,
+                n_malicious=n_mal,
+                attack_type=args.attack_type,
+                attack_prob=args.attack_prob,
+                metrics_file=target,
+                log_dir=log_sub,
+                seed=seed,
+            )
 
-        if not ok:
-            print(f"   [WARN] métricas não encontradas em {target}")
-            raw[pct] = {"final_accuracy": 0.0, "n_flagged_total": 0, "n_malicious": n_mal}
-            continue
+            if not ok:
+                print(f"   [WARN] métricas não encontradas em {target}")
+                continue
 
-        stats = _extract_security_stats(target)
-        stats["n_malicious"] = n_mal
-        raw[pct] = stats
-        print(f"   final_accuracy={stats['final_accuracy']:.4f}  "
-              f"n_flagged_total={stats['n_flagged_total']}")
+            stats = _extract_security_stats(target)
+            accs.append(float(stats["final_accuracy"]))
+            flagged.append(int(stats["n_flagged_total"]))
+            print(f"   final_accuracy={stats['final_accuracy']:.4f}  "
+                  f"n_flagged_total={stats['n_flagged_total']}")
 
-    # ---- Calcular accuracy_drop (referência: pct=0.0 quando existir) ----
-    baseline_acc = raw.get(0.0, {}).get("final_accuracy")
-    if baseline_acc is None:
-        # fallback: usar a menor fração presente
-        smallest = min(raw.keys())
-        baseline_acc = raw[smallest]["final_accuracy"]
+        raw[pct] = {"accs": accs, "flagged": flagged, "n_malicious": n_mal}
+
+    # ---- Referência clean por repetição (pct=0.0 quando existir) ----
+    ref_pct = 0.0 if 0.0 in raw and raw[0.0]["accs"] else min(raw.keys())
+    ref_accs = raw[ref_pct]["accs"]
 
     results: Dict[str, Dict] = {}
-    for pct, stats in sorted(raw.items()):
+    for pct in sorted(raw.keys()):
+        accs = raw[pct]["accs"]
+        flagged = raw[pct]["flagged"]
+        # accuracy_drop pareado por seed quando há o mesmo nº de reps; senão
+        # cai para diferença das médias.
+        if accs and ref_accs and len(accs) == len(ref_accs):
+            drops = [ra - a for ra, a in zip(ref_accs, accs)]
+        else:
+            ref_mean = _mean_std(ref_accs)["mean"] if ref_accs else 0.0
+            drops = [ref_mean - a for a in accs]
+
+        acc_stats = _mean_std(accs)
+        drop_stats = _mean_std(drops)
         results[f"{pct}"] = {
-            "final_accuracy": float(stats["final_accuracy"]),
-            "n_flagged_total": int(stats["n_flagged_total"]),
-            "accuracy_drop": float(baseline_acc - stats["final_accuracy"]),
-            "n_malicious": int(stats["n_malicious"]),
+            "final_accuracy": acc_stats["mean"],
+            "std_final_accuracy": acc_stats["std"],
+            "accuracy_drop": drop_stats["mean"],
+            "std_accuracy_drop": drop_stats["std"],
+            "n_flagged_total": int(sum(flagged)),
+            "mean_n_flagged_per_run": _mean_std([float(x) for x in flagged])["mean"],
+            "n_malicious": int(raw[pct]["n_malicious"]),
+            "repetitions": len(accs),
         }
 
     summary = {
         "config": {
             "clients": args.clients,
             "rounds": args.rounds,
+            "repetitions": args.repetitions,
             "attack_type": args.attack_type,
             "attack_prob": args.attack_prob,
             "mode": args.mode,
+            "reference_pct": ref_pct,
             "started": started,
             "finished": datetime.now().isoformat(),
         },
@@ -333,7 +387,9 @@ def main() -> int:
             "pct": float(k),
             "n_malicious": v["n_malicious"],
             "final_accuracy": v["final_accuracy"],
+            "std_final_accuracy": v.get("std_final_accuracy", 0.0),
             "accuracy_drop": v["accuracy_drop"],
+            "std_accuracy_drop": v.get("std_accuracy_drop", 0.0),
             "n_flagged_total": v["n_flagged_total"],
         }
         for k, v in sorted(results.items(), key=lambda kv: float(kv[0]))
