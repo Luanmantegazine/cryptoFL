@@ -1,0 +1,44 @@
+
+======================================================================
+ CLIENTE 2/2
+======================================================================
+
+[Cliente 2] Modelo=mnistnet  Dataset=mnist
+[Dataset] Node 2: índices 40000-60000 (20000 amostras)
+[Cliente 2] Treino: 20000 amostras
+[Cliente 2] Teste:  10000 amostras
+INFO flwr 2026-06-19 21:01:13,311 | grpc.py:52 | Opened insecure gRPC connection (no certificates were passed)
+DEBUG flwr 2026-06-19 21:01:13,313 | connection.py:55 | ChannelConnectivity.IDLE
+DEBUG flwr 2026-06-19 21:01:13,314 | connection.py:55 | ChannelConnectivity.READY
+[Cliente 2] Rodada 1: Iniciando treino...
+[Cliente 2] SKIP_IPFS: update não publicado no IPFS nem on-chain
+DEBUG flwr 2026-06-19 21:01:55,812 | connection.py:220 | gRPC channel closed
+Traceback (most recent call last):
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "/home/user/cryptoFL/flower_fl/client.py", line 210, in <module>
+    fl.client.start_client(server_address="0.0.0.0:8080", client=client)
+  File "/usr/local/lib/python3.11/dist-packages/flwr/client/app.py", line 248, in start_client
+    _start_client_internal(
+  File "/usr/local/lib/python3.11/dist-packages/flwr/client/app.py", line 382, in _start_client_internal
+    out_message = app(message=message, context=context)
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/dist-packages/flwr/client/flower.py", line 76, in __call__
+    return self._call(message, context)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/dist-packages/flwr/client/flower.py", line 66, in ffn
+    out_message = handle_legacy_message_from_tasktype(
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/dist-packages/flwr/client/message_handler/message_handler.py", line 139, in handle_legacy_message_from_tasktype
+    out_recordset = fitres_to_recordset(fit_res, keep_input=False)
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/dist-packages/flwr/common/recordset_compat.py", line 232, in fitres_to_recordset
+    name=f"{res_str}.metrics", record=ConfigsRecord(fitres.metrics)  # type: ignore
+                                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/dist-packages/flwr/common/configsrecord.py", line 51, in __init__
+    self.set_configs(configs_dict, keep_input=keep_input)
+  File "/usr/local/lib/python3.11/dist-packages/flwr/common/configsrecord.py", line 102, in set_configs
+    is_valid(value)
+  File "/usr/local/lib/python3.11/dist-packages/flwr/common/configsrecord.py", line 76, in is_valid
+    raise TypeError(
+TypeError: Not all values are of valid type. Expected typing.Union[int, float, str, bytes, bool, typing.List[int], typing.List[float], typing.List[str], typing.List[bytes], typing.List[bool]] but you passed <class 'NoneType'>.

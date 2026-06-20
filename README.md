@@ -38,7 +38,9 @@ A decentralized platform for **Federated Learning** coordinated by blockchain sm
 
 ## 🌟 Overview
 
-**CryptoFL** is a research platform that integrates **Federated Learning** (FL) with **blockchain technology** to create a trustless, transparent, and economically viable marketplace for distributed machine learning tasks.
+**CryptoFL** is a research platform that integrates **Federated Learning** (FL) with **blockchain** to study the **cost viability** of a DAO-coordinated FL marketplace.
+
+> **Repository:** https://github.com/luanmantegazine/CryptoFL
 
 ### Acronyms
 
@@ -54,6 +56,20 @@ A decentralized platform for **Federated Learning** coordinated by blockchain sm
 | IID | Independent and Identically Distributed |
 | non-IID | Not Independent and Identically Distributed |
 | DPI | Dots Per Inch |
+
+### Contributions & Positioning
+
+IPFS-for-storage and an L2 rollup for cheap transactions are, on their own, *engineering choices*, not a research contribution — and we do not claim them as one. We frame this work instead as a **cost-viability study of a DAO-coordinated federated-learning marketplace**: requesters post jobs, the DAO matches trainers and escrows payment, and model versions/updates are anchored on-chain by CID while FedAvg runs off-chain.
+
+Concretely, the repository **measures**:
+
+1. **Gas breakdown per marketplace operation** — register, offer, accept (deploy job), sign, record update, publish global model (`results/.../*_breakdown.json`, `plot_gas_breakdown`).
+2. **Overhead vs. vanilla Flower** — `baseline` (Flower only) vs. `no_ipfs` (on-chain anchoring, weights over the wire) vs. `full` (IPFS + on-chain), via `ablation_experiment.py`.
+3. **Matching scalability** — wall-clock and estimated gas of `DAO.matchTrainers` as the number of registered trainers grows (`scripts/load_test_matching.ts`), exposing its O(n) loop as the bottleneck.
+4. **Robustness under malicious clients** — accuracy drop and anomaly-detector flags vs. the fraction of poisoning clients, with mean ± std over seeds (`security_experiment.py`).
+5. **Generality beyond MNIST** — CIFAR-10 with non-IID (Dirichlet-α) partitions and a ResNet-18.
+
+Claims are deliberately modest: this is a measurement/feasibility study of *whether* such a marketplace is economically and computationally plausible on an L2, **not** a claim of a novel consensus, aggregation, or privacy mechanism. What the blockchain does and does **not** guarantee is stated in [Security model](#-security-model) (the off-chain aggregator remains trusted).
 
 ### Key Innovations
 
@@ -239,30 +255,22 @@ pnpm install
 
 ### 4. Configure Environment
 
-Create `.env` file in project root:
+Copy the template and fill in values as needed:
 ```bash
-# Blockchain Configuration
-RPC_URL=http://127.0.0.1:8545
-PRIVATE_KEY=0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80
-
-# Contract ABIs
-DAO_ABI_PATH=artifacts/contracts/DAO.sol/DAO.json
-JOB_ABI_PATH=artifacts/contracts/JobContract.sol/JobContract.json
-
-# IPFS Configuration
-PINATA_JWT=your_pinata_jwt_token_here
-PINATA_GATEWAY=https://gateway.pinata.cloud/ipfs/
-
-# Experiment Configuration
-ROUNDS=3
-MIN_CLIENTS=3
-SAVE_METRICS=true
-METRICS_FILE=results/server_metrics.json
-
-# Deployment Directories
-DEPLOYMENTS_DIR=deployments
-IGNITION_DIR=ignition/deployments
+cp .env.example .env
 ```
+
+`.env` is git-ignored. **Only the `full` on-chain flow and Arbitrum deployment
+need real values** — the `baseline`, `no_ipfs`, ablation and security
+experiments run with zero configuration. `.env.example` documents every
+variable the code reads, including `RPC_URL`, `PRIVATE_KEY`, `DAO_ABI_PATH`,
+`JOB_ABI_PATH`, `PINATA_JWT`, `ROUNDS`, `MIN_CLIENTS`, `MODEL`, `DATASET`,
+`DIRICHLET_ALPHA`, and the anomaly-detection / malicious-client knobs.
+
+> ⚠ **Secrets rotation:** earlier commits of this repository included a real
+> `.env` with a live `PINATA_JWT` (and a `PRIVATE_KEY`). That Pinata token must
+> be **revoked and regenerated** — treat it as compromised. `.env` is now
+> ignored and must never be committed; use `.env.example` as the template.
 
 ### 5. Setup Pinata (IPFS)
 
@@ -314,7 +322,7 @@ npx hardhat node
 npx hardhat run scripts/deploy-dao.ts --network localhost
 
 # Create JobContract
-python3 -m flower_fl.deploy-job
+python3 -m flower_fl.deploy_job
 ```
 
 #### Terminal 3: FL Server
@@ -408,7 +416,7 @@ CryptoFL/
 │   ├── onchain_job.py         # JobContract interaction
 │   ├── ipfs.py                # IPFS utilities
 │   ├── deployments.py         # Contract discovery
-│   ├── deploy-job.py          # Setup automation
+│   ├── deploy_job.py          # Setup automation
 │   └── utils.py               # Helpers
 │
 ├── scripts/                   # Deployment scripts
@@ -772,18 +780,20 @@ Contributions are welcome! Please follow these guidelines:
 
 ### Development Setup
 ```bash
-# Install dev dependencies
-pip install -r requirements-dev.txt
-npm install --include=dev
+# Install dependencies
+pip install -r requirements.txt
+npm install
 
-# Run tests
-npm test                    # Smart contract tests
-pytest tests/               # Python tests (if available)
+# Run smart-contract tests (Hardhat)
+npx hardhat test
 
-# Lint code
-npm run lint               # Solidity
+# Optional formatting
 black flower_fl/           # Python
 ```
+
+> There is no `requirements-dev.txt` or `pytest` suite in this repo — the
+> Python experiment drivers are run directly (see *Reproducing paper results*).
+> Smart-contract behaviour is covered by `test/DAOJobCreation.ts`.
 
 ### Contribution Workflow
 

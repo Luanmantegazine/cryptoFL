@@ -1,0 +1,41 @@
+
+======================================================================
+ FLOWER FEDERATED LEARNING SERVER
+======================================================================
+
+======================================================================
+ INICIALIZANDO MODELO GLOBAL
+======================================================================
+[1/3] Criando modelo: mnistnet
+ ✓ 8 camadas
+[2/3] SKIP_IPFS: pulando publicação no IPFS
+[3/3] SKIP_IPFS: pulando registro on-chain
+
+ Modelo inicial pronto (sem IPFS/blockchain)!
+
+INFO flwr 2026-06-20 00:10:25,944 | app.py:163 | Starting Flower server, config: ServerConfig(num_rounds=1, round_timeout=None)
+INFO flwr 2026-06-20 00:10:25,951 | app.py:176 | Flower ECE: gRPC server running (1 rounds), SSL is disabled
+INFO flwr 2026-06-20 00:10:25,951 | server.py:89 | Initializing global parameters
+INFO flwr 2026-06-20 00:10:25,951 | server.py:276 | Requesting initial parameters from one random client
+INFO flwr 2026-06-20 00:10:30,539 | server.py:280 | Received initial parameters from one random client
+INFO flwr 2026-06-20 00:10:30,539 | server.py:91 | Evaluating initial parameters
+INFO flwr 2026-06-20 00:10:30,539 | server.py:104 | FL starting
+DEBUG flwr 2026-06-20 00:10:31,434 | server.py:222 | fit_round 1: strategy sampled 2 clients (out of 2)
+DEBUG flwr 2026-06-20 00:11:10,591 | server.py:236 | fit_round 1 received 2 results and 0 failures
+
+======================================================================
+ ROUND 1/1
+======================================================================
+
+ Round 1 concluído (SKIP_IPFS)!
+INFO flwr 2026-06-20 00:11:10,726 | server.py:171 | evaluate_round 1: no clients selected, cancel
+INFO flwr 2026-06-20 00:11:10,726 | server.py:153 | FL finished in 40.18729455000005
+INFO flwr 2026-06-20 00:11:10,727 | app.py:226 | app_fit: losses_distributed []
+INFO flwr 2026-06-20 00:11:10,727 | app.py:227 | app_fit: metrics_distributed_fit {'accuracy': [(1, 0.9215)], 'loss': [(1, 0.25575975112781835)]}
+INFO flwr 2026-06-20 00:11:10,727 | app.py:228 | app_fit: metrics_distributed {}
+INFO flwr 2026-06-20 00:11:10,727 | app.py:229 | app_fit: losses_centralized []
+INFO flwr 2026-06-20 00:11:10,727 | app.py:230 | app_fit: metrics_centralized {}
+
+ Métricas salvas em: /tmp/smoke_ablation/no_ipfs/server_metrics.json
+ Gas breakdown em : /tmp/smoke_ablation/no_ipfs/server_metrics_breakdown.json
+ Gas total: 0.00000000 ETH
