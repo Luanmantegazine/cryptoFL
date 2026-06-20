@@ -1,0 +1,37 @@
+{
+  "config": {
+    "clients_list": [
+      3,
+      5
+    ],
+    "rounds": 3,
+    "repetitions": 3,
+    "modes": [
+      "baseline"
+    ],
+    "started": "2026-06-20T11:33:03.197216",
+    "finished": "2026-06-20T11:59:27.573666"
+  },
+  "results": {
+    "3": {
+      "mean_accuracy": 0.9737833333333334,
+      "std_accuracy": 0.0004935697631653653,
+      "mean_time_s": 171.04911875724792,
+      "std_time_s": 26.304273792478956,
+      "baseline_mean_accuracy": 0.9737833333333334,
+      "baseline_std_accuracy": 0.0004935697631653653,
+      "baseline_mean_time_s": 171.04911875724792,
+      "baseline_std_time_s": 26.304273792478956
+    },
+    "5": {
+      "mean_accuracy": 0.9675722222222222,
+      "std_accuracy": 0.00121213005047286,
+      "mean_time_s": 327.60009813308716,
+      "std_time_s": 280.32587434089857,
+      "baseline_mean_accuracy": 0.9675722222222222,
+      "baseline_std_accuracy": 0.00121213005047286,
+      "baseline_mean_time_s": 327.60009813308716,
+      "baseline_std_time_s": 280.32587434089857
+    }
+  }
+}

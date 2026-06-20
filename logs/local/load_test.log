@@ -1,0 +1,25 @@
+
+WARNING: You are using Node.js 23.11.0 which is not supported by Hardhat.
+Please upgrade to 22.10.0 or a later LTS version (even major version number)
+
+Nothing to compile
+Nothing to compile
+
+Deploying DAO (funder=0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266)...
+DAO deployed at 0xa51c1fc2f0d1a1b8494ed1fe312d7c3a78ed91c0
+Thresholds: 10, 50, 100  (N_MAX=100)
+N=10  time=13.969ms  gas=145481  matched=5
+  ... 25 trainers registrados
+  ... 50 trainers registrados
+N=50  time=6.453ms  gas=145481  matched=5
+  ... 75 trainers registrados
+  ... 100 trainers registrados
+N=100  time=14.291ms  gas=145481  matched=5
+
+N trainers | tempo (ms) | gas estimado
+-----------|------------|-------------
+10         | 13.969     | 145481
+50         | 6.453      | 145481
+100        | 14.291     | 145481
+
+Resultados salvos em /Users/luanr/vscode/cryptoFL/results/matching_load_test.json

@@ -29,7 +29,10 @@ import { generatePrivateKey, privateKeyToAccount } from "viem/accounts";
 import { hardhat as hardhatChain } from "viem/chains";
 
 const RPC_URL = process.env.LOCAL_RPC_URL ?? "http://127.0.0.1:8545";
-const N_MAX = parseInt(process.argv[2] ?? "100", 10);
+// Hardhat 3 runs scripts via the `run` task and does not forward positional
+// args (process.argv[2] is "run"), so prefer the LOAD_TEST_N env var.
+const N_RAW = process.env.LOAD_TEST_N ?? process.argv[2] ?? "100";
+const N_MAX = parseInt(N_RAW, 10);
 const DEFAULT_THRESHOLDS = [10, 50, 100, 500];
 
 type Measurement = {

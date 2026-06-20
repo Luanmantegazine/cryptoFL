@@ -1,0 +1,31 @@
+{
+  "dao_address": "0xa51c1fc2f0d1a1b8494ed1fe312d7c3a78ed91c0",
+  "n_max": 100,
+  "thresholds": [
+    10,
+    50,
+    100
+  ],
+  "measurements": [
+    {
+      "n_trainers": 10,
+      "time_ms": 13.969,
+      "gas_estimated": "145481",
+      "matched_count": 5
+    },
+    {
+      "n_trainers": 50,
+      "time_ms": 6.453,
+      "gas_estimated": "145481",
+      "matched_count": 5
+    },
+    {
+      "n_trainers": 100,
+      "time_ms": 14.291,
+      "gas_estimated": "145481",
+      "matched_count": 5
+    }
+  ],
+  "funder": "0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266",
+  "timestamp": "2026-06-20T15:02:25.287Z"
+}

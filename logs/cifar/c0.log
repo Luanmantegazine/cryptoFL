@@ -1,0 +1,37 @@
+
+======================================================================
+ BASELINE CLIENT 0/1 — conectando em 0.0.0.0:8081
+======================================================================
+
+[Cliente 0] Modelo=resnet18  Dataset=cifar10
+[Dataset] Node 0: 21757 amostras CIFAR-10 (α=0.5)
+[Cliente 0] Treino: 21757 amostras
+[Cliente 0] Teste:  10000 amostras
+[93mWARNING [0m:   DEPRECATED FEATURE: flwr.client.start_client() is deprecated.
+	Instead, use the `flower-supernode` CLI command to start a SuperNode as shown below:
+
+		$ flower-supernode --insecure --superlink='<IP>:<PORT>'
+
+	To view all available options, run:
+
+		$ flower-supernode --help
+
+	Using `start_client()` is deprecated.
+
+            This is a deprecated feature. It will be removed
+            entirely in future versions of Flower.
+        
+[92mINFO [0m:      
+[92mINFO [0m:      Received: get_parameters message 8e08a7bd-117d-4960-b001-d0bc76fec63d
+[92mINFO [0m:      Sent reply
+[92mINFO [0m:      
+[92mINFO [0m:      Received: train message 038cb1e1-15aa-4bf5-8e15-5f261123757a
+[BaselineClient 0] Rodada ?: treinando...
+[92mINFO [0m:      Sent reply
+[92mINFO [0m:      
+[92mINFO [0m:      Received: train message 6e22a118-f0c8-4767-9c38-492296c8375c
+[BaselineClient 0] Rodada ?: treinando...
+[92mINFO [0m:      Sent reply
+[92mINFO [0m:      
+[92mINFO [0m:      Received: reconnect message fe44b0a5-2777-4b02-830d-2e01c685fba7
+[92mINFO [0m:      Disconnect and shut down
