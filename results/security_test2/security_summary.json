@@ -1,0 +1,45 @@
+{
+  "config": {
+    "clients": 4,
+    "rounds": 3,
+    "repetitions": 1,
+    "attack_type": "noise",
+    "attack_prob": 1.0,
+    "mode": "baseline",
+    "reference_pct": 0.0,
+    "started": "2026-06-19T22:11:35.968185",
+    "finished": "2026-06-19T22:22:16.004637"
+  },
+  "results": {
+    "0.0": {
+      "final_accuracy": 0.97105,
+      "std_final_accuracy": 0.0,
+      "accuracy_drop": 0.0,
+      "std_accuracy_drop": 0.0,
+      "n_flagged_total": 0,
+      "mean_n_flagged_per_run": 0.0,
+      "n_malicious": 0,
+      "repetitions": 1
+    },
+    "0.25": {
+      "final_accuracy": 0.7519,
+      "std_final_accuracy": 0.0,
+      "accuracy_drop": 0.21914999999999996,
+      "std_accuracy_drop": 0.0,
+      "n_flagged_total": 0,
+      "mean_n_flagged_per_run": 0.0,
+      "n_malicious": 1,
+      "repetitions": 1
+    },
+    "0.5": {
+      "final_accuracy": 0.5355666666666666,
+      "std_final_accuracy": 0.0,
+      "accuracy_drop": 0.43548333333333333,
+      "std_accuracy_drop": 0.0,
+      "n_flagged_total": 0,
+      "mean_n_flagged_per_run": 0.0,
+      "n_malicious": 2,
+      "repetitions": 1
+    }
+  }
+}

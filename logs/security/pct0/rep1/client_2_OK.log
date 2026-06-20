@@ -1,0 +1,26 @@
+[93mWARNING [0m:   DEPRECATED FEATURE: flwr.client.start_client() is deprecated.
+	Instead, use the `flower-supernode` CLI command to start a SuperNode as shown below:
+
+		$ flower-supernode --insecure --superlink='<IP>:<PORT>'
+
+	To view all available options, run:
+
+		$ flower-supernode --help
+
+	Using `start_client()` is deprecated.
+
+            This is a deprecated feature. It will be removed
+            entirely in future versions of Flower.
+        
+[92mINFO [0m:      
+[92mINFO [0m:      Received: train message 83d7dbd4-f6ce-4d61-b6a3-6c0dc152fb79
+[92mINFO [0m:      Sent reply
+[92mINFO [0m:      
+[92mINFO [0m:      Received: train message 55a842d9-7600-46d5-95a1-4ef46c8a813f
+[92mINFO [0m:      Sent reply
+[92mINFO [0m:      
+[92mINFO [0m:      Received: train message fb48a339-61b1-40c6-8339-608b10af9b4a
+[92mINFO [0m:      Sent reply
+[92mINFO [0m:      
+[92mINFO [0m:      Received: reconnect message fa0fe718-c9e5-4b34-9610-7ee90a73d7d7
+[92mINFO [0m:      Disconnect and shut down

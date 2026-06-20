@@ -1,0 +1,26 @@
+[
+  {
+    "round": 0,
+    "operation": "publish_global_model",
+    "gas_eth": 1.6496451063814e-05,
+    "tx_hash": "0x7a9586aac2cb052787d234e60348a268568c3e91d32b4b1c9186ad4bdeac0d06"
+  },
+  {
+    "round": 1,
+    "operation": "publish_global_model",
+    "gas_eth": 1.3493551212683e-05,
+    "tx_hash": "0x45dd98f75508bd0683a2998981dc6e0ec10e4018ddf7d356280cd221b2a04a9c"
+  },
+  {
+    "round": 2,
+    "operation": "publish_global_model",
+    "gas_eth": 1.024003398408e-05,
+    "tx_hash": "0xfa2a6777e23bef253028493f53c092967cfbd6d3172a09a30ec7f3b02ce0dd26"
+  },
+  {
+    "round": 3,
+    "operation": "publish_global_model",
+    "gas_eth": 9.41118256494e-06,
+    "tx_hash": "0x8f133b9c19767b1cb34cf4a089f35a989444990bcdc7c4aeb03dde412c4428a4"
+  }
+]

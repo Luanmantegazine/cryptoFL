@@ -1,0 +1,57 @@
+
+======================================================================
+ CLIENTE 0/2
+======================================================================
+
+[Cliente 0] Modelo=mnistnet  Dataset=mnist
+[Dataset] Node 0: índices 0-20000 (20000 amostras)
+[Cliente 0] Treino: 20000 amostras
+[Cliente 0] Teste:  10000 amostras
+[93mWARNING [0m:   DEPRECATED FEATURE: flwr.client.start_client() is deprecated.
+	Instead, use the `flower-supernode` CLI command to start a SuperNode as shown below:
+
+		$ flower-supernode --insecure --superlink='<IP>:<PORT>'
+
+	To view all available options, run:
+
+		$ flower-supernode --help
+
+	Using `start_client()` is deprecated.
+
+            This is a deprecated feature. It will be removed
+            entirely in future versions of Flower.
+        
+[92mINFO [0m:      
+[92mINFO [0m:      Received: get_parameters message 8aee63a5-c8e0-40d9-afd5-e106f10df623
+[92mINFO [0m:      Sent reply
+[92mINFO [0m:      
+[92mINFO [0m:      Received: train message 5730192e-b1f7-491d-b2d1-271456f4f06f
+[Cliente 0] Rodada 1: Iniciando treino...
+[Cliente 0] Publicando update: QmeYkhchXpr6dZfmGQMwpdK2qqaQBihmZX5TSqMgLAnM5h
+/opt/miniconda3/lib/python3.10/site-packages/eth_keyfile/__init__.py:3: DeprecationWarning: pkg_resources is deprecated as an API. See https://setuptools.pypa.io/en/latest/pkg_resources.html
+  import pkg_resources
+/opt/miniconda3/lib/python3.10/site-packages/web3/providers/websocket/websocket.py:21: DeprecationWarning: websockets.client.connect is deprecated
+  from websockets.client import (
+/opt/miniconda3/lib/python3.10/site-packages/websockets/legacy/__init__.py:6: DeprecationWarning: websockets.legacy is deprecated; see https://websockets.readthedocs.io/en/stable/howto/upgrade.html for upgrade instructions
+  warnings.warn(  # deprecated in 14.0 - 2024-11-09
+/opt/miniconda3/lib/python3.10/site-packages/web3/providers/websocket/websocket_v2.py:18: DeprecationWarning: websockets.client.connect is deprecated
+  from websockets.client import (
+/opt/miniconda3/lib/python3.10/site-packages/web3/providers/persistent.py:10: DeprecationWarning: websockets.WebSocketClientProtocol is deprecated
+  from websockets import (
+[Cliente 0] ERRO na blockchain: {'code': -32000, 'message': "Nonce too low. Expected nonce to be 7 but got 6. Note that transactions can't be queued when automining.", 'data': {'message': "Nonce too low. Expected nonce to be 7 but got 6. Note that transactions can't be queued when automining."}}
+[92mINFO [0m:      Sent reply
+[92mINFO [0m:      
+[92mINFO [0m:      Received: train message 8f1bb5d3-8001-451a-ba61-e6e1a4cbadab
+[Cliente 0] Rodada 2: Iniciando treino...
+[Cliente 0] Publicando update: QmT1pLgYLriU9f7uMRr6tVU1w5cgESEN3YtPeK6KY1drgo
+[Cliente 0] Tx enviada: 0x8056f647621b342918511e54afca7bc3192a7d59eaa2109da29c13f74d19d071
+[92mINFO [0m:      Sent reply
+[92mINFO [0m:      
+[92mINFO [0m:      Received: train message a77109c2-08e3-49be-8825-f1a6670d79c3
+[Cliente 0] Rodada 3: Iniciando treino...
+[Cliente 0] Publicando update: Qmdbxygg2LZLuttTuj3tmFj6Cp1CZ1ST1gR3xLThav2w4a
+[Cliente 0] ERRO na blockchain: ('execution reverted: Internal error', {'message': 'Internal error'})
+[92mINFO [0m:      Sent reply
+[92mINFO [0m:      
+[92mINFO [0m:      Received: reconnect message b26c8175-0557-4456-98da-ad6fed8bb379
+[92mINFO [0m:      Disconnect and shut down

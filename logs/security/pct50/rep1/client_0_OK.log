@@ -1,0 +1,41 @@
+[93mWARNING [0m:   DEPRECATED FEATURE: flwr.client.start_client() is deprecated.
+	Instead, use the `flower-supernode` CLI command to start a SuperNode as shown below:
+
+		$ flower-supernode --insecure --superlink='<IP>:<PORT>'
+
+	To view all available options, run:
+
+		$ flower-supernode --help
+
+	Using `start_client()` is deprecated.
+
+            This is a deprecated feature. It will be removed
+            entirely in future versions of Flower.
+        
+[92mINFO [0m:      
+[92mINFO [0m:      Received: get_parameters message 4b4acc10-66ce-4d68-96e0-f83ff2a023a3
+[92mINFO [0m:      Sent reply
+[92mINFO [0m:      
+[92mINFO [0m:      Received: train message 25517786-6786-4070-b164-2d277450713c
+[92mINFO [0m:      Sent reply
+[92mINFO [0m:      
+[92mINFO [0m:      Received: train message cf1b9ac5-759d-476e-aa18-cc896a36a249
+[92mINFO [0m:      Sent reply
+[92mINFO [0m:      
+[92mINFO [0m:      Received: train message c95fa032-61e5-4544-81e2-426bcca0d5d7
+[92mINFO [0m:      Sent reply
+[92mINFO [0m:      
+[92mINFO [0m:      Received: reconnect message 96e48ca3-cf0e-41ac-a74a-8ff7b1daf2cf
+[92mINFO [0m:      Disconnect and shut down
+
+======================================================================
+ BASELINE CLIENT 0/3 — conectando em 0.0.0.0:8081
+======================================================================
+
+[Cliente 0] Modelo=mnistnet  Dataset=mnist
+[Dataset] Node 0: índices 0-15000 (15000 amostras)
+[Cliente 0] Treino: 15000 amostras
+[Cliente 0] Teste:  10000 amostras
+[BaselineClient 0] Rodada ?: treinando...
+[BaselineClient 0] Rodada ?: treinando...
+[BaselineClient 0] Rodada ?: treinando...

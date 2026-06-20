@@ -1,0 +1,108 @@
+
+======================================================================
+ FLOWER FEDERATED LEARNING SERVER
+======================================================================
+
+======================================================================
+ INICIALIZANDO MODELO GLOBAL
+======================================================================
+[1/3] Criando modelo: mnistnet
+ ✓ 8 camadas
+/opt/miniconda3/lib/python3.10/site-packages/eth_keyfile/__init__.py:3: DeprecationWarning: pkg_resources is deprecated as an API. See https://setuptools.pypa.io/en/latest/pkg_resources.html
+  import pkg_resources
+/opt/miniconda3/lib/python3.10/site-packages/web3/providers/websocket/websocket.py:21: DeprecationWarning: websockets.client.connect is deprecated
+  from websockets.client import (
+/opt/miniconda3/lib/python3.10/site-packages/websockets/legacy/__init__.py:6: DeprecationWarning: websockets.legacy is deprecated; see https://websockets.readthedocs.io/en/stable/howto/upgrade.html for upgrade instructions
+  warnings.warn(  # deprecated in 14.0 - 2024-11-09
+/opt/miniconda3/lib/python3.10/site-packages/web3/providers/websocket/websocket_v2.py:18: DeprecationWarning: websockets.client.connect is deprecated
+  from websockets.client import (
+/opt/miniconda3/lib/python3.10/site-packages/web3/providers/persistent.py:10: DeprecationWarning: websockets.WebSocketClientProtocol is deprecated
+  from websockets import (
+[2/3] Publicando no IPFS...
+ ✓ CID: QmTcHV5ZtNEqTHBaUJhVRDPEXf1gqQEkDufqWjd7XLYyNa
+[3/3] Registrando on-chain...
+ ✓ Job 1: 0xeEBe00Ac...
+   Tx: 0x7a9586aac2cb052787d234e60348a268568c3e91d32b4b1c9186ad4bdeac0d06
+   Gas: 0.00001650 ETH  Lat: 0.142s
+
+ Modelo inicial publicado!
+
+[93mWARNING [0m:   DEPRECATED FEATURE: flwr.server.start_server() is deprecated.
+	Instead, use the `flower-superlink` CLI command to start a SuperLink as shown below:
+
+		$ flower-superlink --insecure
+
+	To view usage and all available options, run:
+
+		$ flower-superlink --help
+
+	Using `start_server()` is deprecated.
+
+            This is a deprecated feature. It will be removed
+            entirely in future versions of Flower.
+        
+[92mINFO [0m:      Starting Flower server, config: num_rounds=3, no round_timeout
+[92mINFO [0m:      Flower ECE: gRPC server running (3 rounds), SSL is disabled
+[92mINFO [0m:      [INIT]
+[92mINFO [0m:      Requesting initial parameters from one random client
+[92mINFO [0m:      Received initial parameters from one random client
+[92mINFO [0m:      Starting evaluation of initial global parameters
+[92mINFO [0m:      Evaluation returned no results (`None`)
+[92mINFO [0m:      
+[92mINFO [0m:      [ROUND 1]
+[92mINFO [0m:      configure_fit: strategy sampled 3 clients (out of 3)
+[92mINFO [0m:      aggregate_fit: received 3 results and 0 failures
+
+======================================================================
+ ROUND 1/3
+======================================================================
+
+[1/2] Publicando no IPFS...
+ ✓ CID: QmcuQTEF4uEfwKGF634cYHV9nK5ZA626sr7uvNCxpAMB3P
+[2/2] Registrando on-chain...
+
+ Round 1 concluído!
+[92mINFO [0m:      configure_evaluate: no clients selected, skipping evaluation
+[92mINFO [0m:      
+[92mINFO [0m:      [ROUND 2]
+[92mINFO [0m:      configure_fit: strategy sampled 3 clients (out of 3)
+[92mINFO [0m:      aggregate_fit: received 3 results and 0 failures
+
+======================================================================
+ ROUND 2/3
+======================================================================
+
+[1/2] Publicando no IPFS...
+ ✓ CID: QmUHYaXx6iMB5HTwgPZFrXXkLoy4Pqxn94vdshASZhW48Q
+[2/2] Registrando on-chain...
+
+ Round 2 concluído!
+[92mINFO [0m:      configure_evaluate: no clients selected, skipping evaluation
+[92mINFO [0m:      
+[92mINFO [0m:      [ROUND 3]
+[92mINFO [0m:      configure_fit: strategy sampled 3 clients (out of 3)
+[92mINFO [0m:      aggregate_fit: received 3 results and 0 failures
+
+======================================================================
+ ROUND 3/3
+======================================================================
+
+[1/2] Publicando no IPFS...
+ ✓ CID: QmQdewSjm1LPdaycEPr5EhgphzFf1FEEASYthPcjXjF5NG
+[2/2] Registrando on-chain...
+
+ Round 3 concluído!
+[92mINFO [0m:      configure_evaluate: no clients selected, skipping evaluation
+[92mINFO [0m:      
+[92mINFO [0m:      [SUMMARY]
+[92mINFO [0m:      Run finished 3 round(s) in 216.21s
+[92mINFO [0m:      	History (metrics, distributed, fit):
+[92mINFO [0m:      	{'accuracy': [(1, 0.9072), (2, 0.9633), (3, 0.9728666666666667)],
+[92mINFO [0m:      	 'loss': [(1, 0.2968812471486628),
+[92mINFO [0m:      	          (2, 0.12347641758682827),
+[92mINFO [0m:      	          (3, 0.09136101762225153)]}
+[92mINFO [0m:      
+
+ Métricas salvas em: results/server_metrics.json
+ Gas breakdown em : results/server_metrics_breakdown.json
+ Gas total: 0.00004964 ETH

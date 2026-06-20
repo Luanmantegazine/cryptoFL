@@ -397,6 +397,29 @@ python run.py --clients 5 --rounds 5
 
 ---
 
+## 🖥 Fully local full-mode run (no real ETH, no Pinata)
+
+You can run the **complete on-chain flow** entirely on your machine — real gas
+units, real IPFS CIDs, zero cost — using a local Hardhat node + a local IPFS
+(Kubo) daemon instead of Pinata. A confirmed end-to-end run produced
+**gas = 0.00004964 ETH** and **final accuracy = 97.29%** over 3 rounds.
+
+Key point: the Flower server (port `8080`) collides with the default IPFS
+gateway (also `8080`). Move the IPFS gateway to `8088` once:
+
+```bash
+ipfs config Addresses.Gateway /ip4/0.0.0.0/tcp/8088
+```
+
+Then set `IPFS_API_URL=http://127.0.0.1:5001` and
+`IPFS_GATEWAYS=http://127.0.0.1:8088/ipfs/` (leave `PINATA_JWT=` empty) in `.env`.
+
+See **[SETUP_LOCAL.md](SETUP_LOCAL.md)** for the full step-by-step guide
+(IPFS install, port fix, `.env`, deploy, server + clients, verification, plots,
+and troubleshooting).
+
+---
+
 ## �📁 Project Structure
 ```
 CryptoFL/
