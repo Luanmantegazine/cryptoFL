@@ -111,11 +111,16 @@ def _mean_std(values: List[float]) -> Dict[str, float]:
 def run_one(aggregator: str, num_clients: int, rounds: int, mu: float,
             dataset: str, model: str, seed: int,
             metrics_file: Path, log_dir: Path,
-            alpha: float = 0.5) -> Optional[Dict[str, float]]:
+            alpha: float = 0.5, min_fraction: float = 1.0) -> Optional[Dict[str, float]]:
     base_env = os.environ.copy()
     base_env["ROUNDS"] = str(rounds)
-    base_env["MIN_CLIENTS"] = str(num_clients)
-    base_env["NUM_NODES"] = str(num_clients)
+    # Fix 4: quorum relaxável. min_fraction=1.0 (default) mantém MIN_CLIENTS == N
+    # — estatisticamente mais limpo para um estudo de escala (toda run usa N).
+    # Valores <1.0 toleram a morte de clientes (ex.: 0.8 ⇒ aceita perder 20%),
+    # de modo que um cliente morto não bloqueie o round.
+    min_clients = max(2, int(num_clients * min_fraction))
+    base_env["MIN_CLIENTS"] = str(min_clients)
+    base_env["NUM_NODES"] = str(num_clients)   # ainda sobe N clientes
     base_env["SEED"] = str(seed)
     base_env["DATASET"] = dataset
     base_env["MODEL"] = model
@@ -126,6 +131,10 @@ def run_one(aggregator: str, num_clients: int, rounds: int, mu: float,
     base_env["BASELINE_SERVER_ADDRESS"] = f"0.0.0.0:{BASELINE_PORT}"
     base_env["GRPC_POLL_STRATEGY"] = "poll"
     base_env["GRPC_ENABLE_FORK_SUPPORT"] = "1"
+    # Fix 1: round timeout finito para que um cliente morto não trave o sweep.
+    # Rounds de MNIST são rápidos; CIFAR/ResNet precisam de um teto grande.
+    default_timeout = 7200 if dataset.lower() == "cifar10" else 900
+    base_env.setdefault("ROUND_TIMEOUT", str(default_timeout))
     # Evita o OMP Error #15 (libomp carregado em duplicidade) ao spawnar torch.
     base_env.setdefault("KMP_DUPLICATE_LIB_OK", "TRUE")
     for _v in ("OMP_NUM_THREADS", "MKL_NUM_THREADS",
@@ -141,14 +150,44 @@ def run_one(aggregator: str, num_clients: int, rounds: int, mu: float,
 
     clients: List[subprocess.Popen] = []
     try:
+        # Fix 3: delay entre spawns sensível ao dataset. 0.5s é curto demais
+        # quando cada cliente precisa importar torch e carregar CIFAR — o
+        # handshake gRPC corre e o servidor reporta "N-1 results and 1 failures".
+        spawn_delay = 3.0 if dataset.lower() == "cifar10" else 1.0
         for i in range(num_clients):
             env = base_env.copy()
             env["NODE_ID"] = str(i)
             env["BASELINE_AS_CLIENT"] = "1"
             clients.append(_spawn([PYTHON, "-m", "flower_fl.baseline_runner"],
                                   env=env, log_path=log_dir / f"client_{i}.log"))
-            time.sleep(0.5)
-        server.wait()
+            time.sleep(spawn_delay)
+
+        # Fix 3: confirma que todos os clientes seguem vivos antes de esperar o
+        # servidor (detecta morte logo após o spawn).
+        time.sleep(2)
+        dead = [i for i, c in enumerate(clients) if c.poll() is not None]
+        if dead:
+            print(f"   [WARN] clients died right after spawn: {dead} "
+                  f"(check {log_dir}/client_<i>.log)")
+
+        # Fix 2: watchdog de wall-clock em torno de server.wait(). Teto rígido
+        # por run (servidor + todos os clientes), proporcional a dataset/N.
+        per_round = 1200 if dataset.lower() == "cifar10" else 120
+        hard_ceiling = per_round * rounds * max(1, num_clients // 2) + 300
+        deadline = time.time() + hard_ceiling
+        while True:
+            try:
+                server.wait(timeout=10)
+                break  # servidor terminou normalmente
+            except subprocess.TimeoutExpired:
+                if time.time() > deadline:
+                    print(f"   [WATCHDOG] run exceeded {hard_ceiling}s — terminating")
+                    break
+                # se nenhum cliente está vivo e o servidor ainda espera, aborta.
+                alive = sum(1 for c in clients if c.poll() is None)
+                if alive == 0 and server.poll() is None:
+                    print("   [WATCHDOG] all clients dead but server alive — aborting run")
+                    break
     except KeyboardInterrupt:
         raise
     finally:
@@ -270,6 +309,10 @@ def main() -> int:
                         help="Coeficiente proximal do FedProx.")
     parser.add_argument("--alpha", type=float, default=0.5,
                         help="Parâmetro Dirichlet (não-IID) para CIFAR-10.")
+    parser.add_argument("--min-fraction", type=float, default=1.0,
+                        help="Fração de clientes exigida por round (ex.: 0.8 tolera "
+                             "perder 20%%). 1.0 (default) mantém MIN_CLIENTS == N, "
+                             "estatisticamente mais limpo para o estudo de escala.")
     parser.add_argument("--dataset", type=str, default="mnist")
     parser.add_argument("--model", type=str, default="mnistnet")
     parser.add_argument("--output-dir", type=str, default="results/scaling")
@@ -314,7 +357,7 @@ def main() -> int:
                 t0 = time.time()
                 stats = run_one(agg, n, args.rounds, args.mu, args.dataset,
                                 args.model, seed, metrics_file, log_dir,
-                                alpha=args.alpha)
+                                alpha=args.alpha, min_fraction=args.min_fraction)
                 wall = time.time() - t0
                 if stats is None:
                     print(f"   [WARN] {tag}: métricas não encontradas (ver {log_dir})")
@@ -347,6 +390,7 @@ def main() -> int:
             "repetitions": args.repetitions,
             "mu": args.mu,
             "alpha": args.alpha,
+            "min_fraction": args.min_fraction,
             "dataset": args.dataset,
             "model": args.model,
             "started": started,

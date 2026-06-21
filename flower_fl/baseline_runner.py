@@ -48,6 +48,12 @@ SERVER_ADDRESS = os.getenv("BASELINE_SERVER_ADDRESS", "0.0.0.0:8081")
 AGGREGATOR = os.getenv("AGGREGATOR", "fedavg").lower()
 FEDPROX_MU = float(os.getenv("FEDPROX_MU", "0.1"))
 
+# Timeout (em segundos) por round no servidor. None = espera infinita (o
+# comportamento original). O scaling_experiment passa um valor finito via a env
+# var ROUND_TIMEOUT para que um cliente morto não trave o sweep inteiro.
+ROUND_TIMEOUT = os.getenv("ROUND_TIMEOUT")
+_round_timeout = float(ROUND_TIMEOUT) if ROUND_TIMEOUT else None
+
 
 class BaselineMetricsCollector:
     def __init__(self):
@@ -306,12 +312,14 @@ def main_server():
     print("\n" + "=" * 70)
     print(" FLOWER FEDERATED LEARNING SERVER — BASELINE (sem blockchain/IPFS)")
     print("=" * 70)
-    print(f" ROUNDS={ROUNDS}  MIN_CLIENTS={MIN_CLIENTS}  PORT={SERVER_ADDRESS}")
+    _rt = f"{_round_timeout:.0f}s" if _round_timeout else "∞"
+    print(f" ROUNDS={ROUNDS}  MIN_CLIENTS={MIN_CLIENTS}  PORT={SERVER_ADDRESS}"
+          f"  ROUND_TIMEOUT={_rt}")
     _agg = AGGREGATOR + (f" (mu={FEDPROX_MU})" if AGGREGATOR == "fedprox" else "")
     print(f" AGGREGATOR={_agg}")
 
     strategy = BaselineFLStrategy(min_clients=MIN_CLIENTS)
-    config = fl.server.ServerConfig(num_rounds=ROUNDS, round_timeout=None)
+    config = fl.server.ServerConfig(num_rounds=ROUNDS, round_timeout=_round_timeout)
 
     experiment_start = time.time()
     try:
