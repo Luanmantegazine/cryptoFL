@@ -1,0 +1,105 @@
+{
+  "config": {
+    "clients_list": [
+      2,
+      4,
+      6,
+      8,
+      10
+    ],
+    "aggregators": [
+      "fedavg",
+      "fedprox"
+    ],
+    "rounds": 3,
+    "repetitions": 3,
+    "mu": 0.1,
+    "alpha": 0.5,
+    "dataset": "mnist",
+    "model": "mnistnet",
+    "started": "2026-06-21T12:37:38.533260",
+    "finished": "2026-06-21T14:34:52.849409"
+  },
+  "results": {
+    "2": {
+      "fedavg": {
+        "mean_accuracy": 0.9776000000000001,
+        "std_accuracy": 0.00017320508075686865,
+        "mean_time_s": 194.3251198132833,
+        "std_time_s": 27.249902408785495,
+        "n_runs": 3
+      },
+      "fedprox": {
+        "mean_accuracy": 0.9350777777777778,
+        "std_accuracy": 0.0028779011127581912,
+        "mean_time_s": 210.64055466651917,
+        "std_time_s": 12.725927801172293,
+        "n_runs": 3
+      }
+    },
+    "4": {
+      "fedavg": {
+        "mean_accuracy": 0.9708666666666667,
+        "std_accuracy": 0.00040926763859357743,
+        "mean_time_s": 242.03447651863098,
+        "std_time_s": 24.325567019890606,
+        "n_runs": 3
+      },
+      "fedprox": {
+        "mean_accuracy": 0.9349,
+        "std_accuracy": 0.0019184050087971136,
+        "mean_time_s": 159.75479539235434,
+        "std_time_s": 75.63015051044859,
+        "n_runs": 3
+      }
+    },
+    "6": {
+      "fedavg": {
+        "mean_accuracy": 0.9667111111111112,
+        "std_accuracy": 0.0006263503930028372,
+        "mean_time_s": 213.11111291249594,
+        "std_time_s": 19.62811159298746,
+        "n_runs": 3
+      },
+      "fedprox": {
+        "mean_accuracy": 0.9284500000000001,
+        "std_accuracy": 0.002192664538359137,
+        "mean_time_s": 73.96007879575093,
+        "std_time_s": 5.6630902705227655,
+        "n_runs": 3
+      }
+    },
+    "8": {
+      "fedavg": {
+        "mean_accuracy": 0.9625444444444445,
+        "std_accuracy": 0.001004618962223618,
+        "mean_time_s": 297.87332701683044,
+        "std_time_s": 46.7280951150287,
+        "n_runs": 3
+      },
+      "fedprox": {
+        "mean_accuracy": 0.9246555555555555,
+        "std_accuracy": 0.003640258436084151,
+        "mean_time_s": 86.11564914385478,
+        "std_time_s": 19.861147494457892,
+        "n_runs": 3
+      }
+    },
+    "10": {
+      "fedavg": {
+        "mean_accuracy": 0.9579833333333333,
+        "std_accuracy": 0.0014646766802873866,
+        "mean_time_s": 306.06165448824567,
+        "std_time_s": 20.600057576814898,
+        "n_runs": 3
+      },
+      "fedprox": {
+        "mean_accuracy": 0.9246722222222222,
+        "std_accuracy": 0.0017086652794028926,
+        "mean_time_s": 399.1281208197276,
+        "std_time_s": 562.7085764569855,
+        "n_runs": 3
+      }
+    }
+  }
+}

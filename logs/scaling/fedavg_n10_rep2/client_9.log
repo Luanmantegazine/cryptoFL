@@ -1,0 +1,38 @@
+[93mWARNING [0m:   DEPRECATED FEATURE: flwr.client.start_client() is deprecated.
+	Instead, use the `flower-supernode` CLI command to start a SuperNode as shown below:
+
+		$ flower-supernode --insecure --superlink='<IP>:<PORT>'
+
+	To view all available options, run:
+
+		$ flower-supernode --help
+
+	Using `start_client()` is deprecated.
+
+            This is a deprecated feature. It will be removed
+            entirely in future versions of Flower.
+        
+[92mINFO [0m:      
+[92mINFO [0m:      Received: train message 5a65e7ce-98e7-4b7c-9f69-ff0256f7f86b
+[92mINFO [0m:      Sent reply
+[92mINFO [0m:      
+[92mINFO [0m:      Received: train message 47ff11b0-26cf-4865-bacd-722d8a52f6bc
+[92mINFO [0m:      Sent reply
+[92mINFO [0m:      
+[92mINFO [0m:      Received: train message d4745888-114f-4086-bfd6-d55989b23ed8
+[92mINFO [0m:      Sent reply
+[92mINFO [0m:      
+[92mINFO [0m:      Received: reconnect message aa183682-f06e-419e-8c87-442afce2133d
+[92mINFO [0m:      Disconnect and shut down
+
+======================================================================
+ BASELINE CLIENT 9/9 — conectando em 0.0.0.0:8081
+======================================================================
+
+[Cliente 9] Modelo=mnistnet  Dataset=mnist
+[Dataset] Node 9: índices 54000-60000 (6000 amostras)
+[Cliente 9] Treino: 6000 amostras
+[Cliente 9] Teste:  10000 amostras
+[BaselineClient 9] Rodada ?: treinando (fedavg)...
+[BaselineClient 9] Rodada ?: treinando (fedavg)...
+[BaselineClient 9] Rodada ?: treinando (fedavg)...

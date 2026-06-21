@@ -1,0 +1,38 @@
+[93mWARNING [0m:   DEPRECATED FEATURE: flwr.client.start_client() is deprecated.
+	Instead, use the `flower-supernode` CLI command to start a SuperNode as shown below:
+
+		$ flower-supernode --insecure --superlink='<IP>:<PORT>'
+
+	To view all available options, run:
+
+		$ flower-supernode --help
+
+	Using `start_client()` is deprecated.
+
+            This is a deprecated feature. It will be removed
+            entirely in future versions of Flower.
+        
+[92mINFO [0m:      
+[92mINFO [0m:      Received: train message b4f3f732-dd90-492d-9bba-95ba940e1498
+[92mINFO [0m:      Sent reply
+[92mINFO [0m:      
+[92mINFO [0m:      Received: train message f7270604-3e43-4e24-a240-67520df0b059
+[92mINFO [0m:      Sent reply
+[92mINFO [0m:      
+[92mINFO [0m:      Received: train message ee0e4b9b-d18f-4a9b-a045-a56facc0dd17
+[92mINFO [0m:      Sent reply
+[92mINFO [0m:      
+[92mINFO [0m:      Received: reconnect message 6dfdc2a1-d2a5-4ecd-80ed-5101015b25ae
+[92mINFO [0m:      Disconnect and shut down
+
+======================================================================
+ BASELINE CLIENT 8/9 — conectando em 0.0.0.0:8081
+======================================================================
+
+[Cliente 8] Modelo=mnistnet  Dataset=mnist
+[Dataset] Node 8: índices 48000-54000 (6000 amostras)
+[Cliente 8] Treino: 6000 amostras
+[Cliente 8] Teste:  10000 amostras
+[BaselineClient 8] Rodada ?: treinando (fedprox(mu=0.1))...
+[BaselineClient 8] Rodada ?: treinando (fedprox(mu=0.1))...
+[BaselineClient 8] Rodada ?: treinando (fedprox(mu=0.1))...

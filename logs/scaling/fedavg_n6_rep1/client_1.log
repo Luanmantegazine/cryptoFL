@@ -1,0 +1,54 @@
+[93mWARNING [0m:   DEPRECATED FEATURE: flwr.client.start_client() is deprecated.
+	Instead, use the `flower-supernode` CLI command to start a SuperNode as shown below:
+
+		$ flower-supernode --insecure --superlink='<IP>:<PORT>'
+
+	To view all available options, run:
+
+		$ flower-supernode --help
+
+	Using `start_client()` is deprecated.
+
+            This is a deprecated feature. It will be removed
+            entirely in future versions of Flower.
+        
+[92mINFO [0m:      
+[92mINFO [0m:      Received: get_parameters message e399e6ad-4d3a-4c8c-851e-83eaf9d345ea
+[92mINFO [0m:      Sent reply
+[92mINFO [0m:      
+[92mINFO [0m:      Received: train message 8897ec0f-14a1-4030-9cdc-915969a1b036
+[92mINFO [0m:      Sent reply
+Traceback (most recent call last):
+  File "/opt/miniconda3/lib/python3.10/runpy.py", line 196, in _run_module_as_main
+    return _run_code(code, main_globals, None,
+  File "/opt/miniconda3/lib/python3.10/runpy.py", line 86, in _run_code
+    exec(code, run_globals)
+  File "/Users/luanr/vscode/cryptoFL/flower_fl/baseline_runner.py", line 363, in <module>
+    main_client()
+  File "/Users/luanr/vscode/cryptoFL/flower_fl/baseline_runner.py", line 358, in main_client
+    fl.client.start_client(server_address=SERVER_ADDRESS, client=client)
+  File "/opt/miniconda3/lib/python3.10/site-packages/flwr/compat/client/app.py", line 183, in start_client
+    start_client_internal(
+  File "/opt/miniconda3/lib/python3.10/site-packages/flwr/compat/client/app.py", line 394, in start_client_internal
+    message = receive()
+  File "/opt/miniconda3/lib/python3.10/site-packages/flwr/compat/client/grpc_client/connection.py", line 142, in receive
+    proto = next(server_message_iterator)
+  File "/opt/miniconda3/lib/python3.10/site-packages/grpc/_channel.py", line 543, in __next__
+    return self._next()
+  File "/opt/miniconda3/lib/python3.10/site-packages/grpc/_channel.py", line 969, in _next
+    raise self
+grpc._channel._MultiThreadedRendezvous: <_MultiThreadedRendezvous of RPC that terminated with:
+	status = StatusCode.UNAVAILABLE
+	details = "ping timeout"
+	debug_error_string = "UNKNOWN:Error received from peer ipv4:127.0.0.1:8081 {created_time:"2026-06-21T15:27:32.391555-03:00", grpc_status:14, grpc_message:"ping timeout"}"
+>
+
+======================================================================
+ BASELINE CLIENT 1/5 — conectando em 0.0.0.0:8081
+======================================================================
+
+[Cliente 1] Modelo=resnet18  Dataset=cifar10
+[Dataset] Node 1: 10663 amostras CIFAR-10 (α=0.1)
+[Cliente 1] Treino: 10663 amostras
+[Cliente 1] Teste:  10000 amostras
+[BaselineClient 1] Rodada ?: treinando (fedavg)...

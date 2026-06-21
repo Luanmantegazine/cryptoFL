@@ -1,0 +1,104 @@
+{
+  "config": {
+    "clients_list": [
+      2,
+      4,
+      6,
+      8,
+      10
+    ],
+    "aggregators": [
+      "fedavg",
+      "fedprox"
+    ],
+    "rounds": 3,
+    "repetitions": 1,
+    "mu": 0.1,
+    "dataset": "mnist",
+    "model": "mnistnet",
+    "started": "2026-06-21T11:48:38.261208",
+    "finished": "2026-06-21T12:32:54.511751"
+  },
+  "results": {
+    "2": {
+      "fedavg": {
+        "mean_accuracy": 0.9773833333333334,
+        "std_accuracy": 0.0,
+        "mean_time_s": 211.17373323440552,
+        "std_time_s": 0.0,
+        "n_runs": 1
+      },
+      "fedprox": {
+        "mean_accuracy": 0.9354,
+        "std_accuracy": 0.0,
+        "mean_time_s": 244.98262286186218,
+        "std_time_s": 0.0,
+        "n_runs": 1
+      }
+    },
+    "4": {
+      "fedavg": {
+        "mean_accuracy": 0.9706166666666667,
+        "std_accuracy": 0.0,
+        "mean_time_s": 217.97703075408936,
+        "std_time_s": 0.0,
+        "n_runs": 1
+      },
+      "fedprox": {
+        "mean_accuracy": 0.9349,
+        "std_accuracy": 0.0,
+        "mean_time_s": 268.3589518070221,
+        "std_time_s": 0.0,
+        "n_runs": 1
+      }
+    },
+    "6": {
+      "fedavg": {
+        "mean_accuracy": 0.9658,
+        "std_accuracy": 0.0,
+        "mean_time_s": 185.62502098083496,
+        "std_time_s": 0.0,
+        "n_runs": 1
+      },
+      "fedprox": {
+        "mean_accuracy": 0.9317833333333333,
+        "std_accuracy": 0.0,
+        "mean_time_s": 224.37913489341736,
+        "std_time_s": 0.0,
+        "n_runs": 1
+      }
+    },
+    "8": {
+      "fedavg": {
+        "mean_accuracy": 0.9617833333333333,
+        "std_accuracy": 0.0,
+        "mean_time_s": 203.46200394630432,
+        "std_time_s": 0.0,
+        "n_runs": 1
+      },
+      "fedprox": {
+        "mean_accuracy": 0.9304833333333333,
+        "std_accuracy": 0.0,
+        "mean_time_s": 248.49440169334412,
+        "std_time_s": 0.0,
+        "n_runs": 1
+      }
+    },
+    "10": {
+      "fedavg": {
+        "mean_accuracy": 0.9565833333333333,
+        "std_accuracy": 0.0,
+        "mean_time_s": 389.84048438072205,
+        "std_time_s": 0.0,
+        "n_runs": 1
+      },
+      "fedprox": {
+        "mean_accuracy": 0.9254166666666667,
+        "std_accuracy": 0.0,
+        "mean_time_s": 290.5800747871399,
+        "std_time_s": 0.0,
+        "n_runs": 1
+      }
+    }
+  }
+}

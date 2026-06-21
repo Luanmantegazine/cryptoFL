@@ -42,6 +42,12 @@ METRICS_FILE = os.getenv("BASELINE_METRICS_FILE", "results/baseline_metrics.json
 SAVE_METRICS = os.getenv("SAVE_METRICS", "true").lower() == "true"
 SERVER_ADDRESS = os.getenv("BASELINE_SERVER_ADDRESS", "0.0.0.0:8081")
 
+# Agregador: "fedavg" (padrão) ou "fedprox". O FedProx usa a MESMA agregação
+# ponderada do FedAvg no servidor; a diferença está no cliente, que adiciona o
+# termo proximal (mu/2)*||w - w_global||^2 à perda local (Li et al., 2020).
+AGGREGATOR = os.getenv("AGGREGATOR", "fedavg").lower()
+FEDPROX_MU = float(os.getenv("FEDPROX_MU", "0.1"))
+
 
 class BaselineMetricsCollector:
     def __init__(self):
@@ -223,13 +229,27 @@ class BaselineClient(MNISTClient):
         server_round = config.get("server_round", "?")
         epochs = int(config.get("epochs", 1))
 
+        # FedProx: guarda uma cópia (congelada) dos pesos globais do início do
+        # round para o termo proximal. Mapeado por nome para casar com os
+        # parâmetros treináveis (named_parameters), ignorando buffers.
+        use_fedprox = AGGREGATOR == "fedprox" and FEDPROX_MU > 0.0
+        global_state = {}
+        if use_fedprox:
+            keys = list(self.model.state_dict().keys())
+            global_state = {
+                k: torch.tensor(v, device=self.device)
+                for k, v in zip(keys, parameters)
+            }
+
         total_loss = 0.0
         batch_count = 0
         correct_predictions = 0
         total_samples = 0
         start_time = time.time()
 
-        print(f"[BaselineClient {self.node_id}] Rodada {server_round}: treinando...")
+        agg_label = f"{AGGREGATOR}" + (f"(mu={FEDPROX_MU})" if use_fedprox else "")
+        print(f"[BaselineClient {self.node_id}] Rodada {server_round}: "
+              f"treinando ({agg_label})...")
 
         for _ in range(epochs):
             for images, labels in self.trainloader:
@@ -238,6 +258,15 @@ class BaselineClient(MNISTClient):
                 optimizer.zero_grad()
                 outputs = self.model(images)
                 loss = criterion(outputs, labels)
+
+                if use_fedprox:
+                    prox = torch.zeros((), device=self.device)
+                    for name, w in self.model.named_parameters():
+                        w_g = global_state.get(name)
+                        if w_g is not None:
+                            prox = prox + ((w - w_g) ** 2).sum()
+                    loss = loss + (FEDPROX_MU / 2.0) * prox
+
                 loss.backward()
                 optimizer.step()
 
@@ -267,6 +296,9 @@ class BaselineClient(MNISTClient):
         from .client import MALICIOUS, ATTACK_TYPE
         metrics["is_malicious"] = int(MALICIOUS)
         metrics["attack_type"] = ATTACK_TYPE if MALICIOUS else "none"
+        metrics["aggregator"] = AGGREGATOR
+        if use_fedprox:
+            metrics["fedprox_mu"] = float(FEDPROX_MU)
         return updated_params, len(self.trainloader.dataset), metrics
 
 
@@ -275,6 +307,8 @@ def main_server():
     print(" FLOWER FEDERATED LEARNING SERVER — BASELINE (sem blockchain/IPFS)")
     print("=" * 70)
     print(f" ROUNDS={ROUNDS}  MIN_CLIENTS={MIN_CLIENTS}  PORT={SERVER_ADDRESS}")
+    _agg = AGGREGATOR + (f" (mu={FEDPROX_MU})" if AGGREGATOR == "fedprox" else "")
+    print(f" AGGREGATOR={_agg}")
 
     strategy = BaselineFLStrategy(min_clients=MIN_CLIENTS)
     config = fl.server.ServerConfig(num_rounds=ROUNDS, round_timeout=None)

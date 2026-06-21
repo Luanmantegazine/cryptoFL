@@ -1,0 +1,159 @@
+{
+  "experiment_start": "2026-06-21T12:37:41.539718",
+  "job_addresses": [],
+  "total_rounds": 3,
+  "rounds": [
+    {
+      "round": 1,
+      "timestamp": "2026-06-21T12:38:38.643449",
+      "num_clients": 2,
+      "num_failures": 0,
+      "gas_eth": null,
+      "tx_hash": null,
+      "ipfs_cid": null,
+      "aggregate_time_s": 0.008332252502441406,
+      "train_time_round_s": 52.19954800605774,
+      "accuracy": 0.9215333333333333,
+      "client_metrics": [
+        {
+          "client_index": 1,
+          "num_examples": 30000,
+          "node_id": 0,
+          "train_samples": 30000,
+          "loss": 0.2601285009468193,
+          "train_time": 52.073299169540405,
+          "epochs": 1,
+          "batches": 938,
+          "accuracy": 0.9213,
+          "attack_type": "none",
+          "avg_loss": 0.2601285009468193,
+          "is_malicious": 0,
+          "aggregator": "fedavg"
+        },
+        {
+          "client_index": 2,
+          "num_examples": 30000,
+          "node_id": 1,
+          "train_samples": 30000,
+          "loss": 0.2523930886271856,
+          "train_time": 52.19954800605774,
+          "epochs": 1,
+          "batches": 938,
+          "accuracy": 0.9217666666666666,
+          "attack_type": "none",
+          "avg_loss": 0.2523930886271856,
+          "is_malicious": 0,
+          "aggregator": "fedavg"
+        }
+      ],
+      "aggregated_metrics": {
+        "accuracy": 0.9215333333333333,
+        "loss": 0.2562607947870025
+      }
+    },
+    {
+      "round": 2,
+      "timestamp": "2026-06-21T12:39:33.647318",
+      "num_clients": 2,
+      "num_failures": 0,
+      "gas_eth": null,
+      "tx_hash": null,
+      "ipfs_cid": null,
+      "aggregate_time_s": 0.009502410888671875,
+      "train_time_round_s": 54.93004012107849,
+      "accuracy": 0.9680333333333333,
+      "client_metrics": [
+        {
+          "client_index": 1,
+          "num_examples": 30000,
+          "node_id": 0,
+          "train_samples": 30000,
+          "loss": 0.11232539273645561,
+          "train_time": 54.77094292640686,
+          "epochs": 1,
+          "batches": 938,
+          "accuracy": 0.9672666666666667,
+          "attack_type": "none",
+          "avg_loss": 0.11232539273645561,
+          "is_malicious": 0,
+          "aggregator": "fedavg"
+        },
+        {
+          "client_index": 2,
+          "num_examples": 30000,
+          "node_id": 1,
+          "train_samples": 30000,
+          "loss": 0.10913173035571554,
+          "train_time": 54.93004012107849,
+          "epochs": 1,
+          "batches": 938,
+          "accuracy": 0.9688,
+          "attack_type": "none",
+          "avg_loss": 0.10913173035571554,
+          "is_malicious": 0,
+          "aggregator": "fedavg"
+        }
+      ],
+      "aggregated_metrics": {
+        "accuracy": 0.9680333333333333,
+        "loss": 0.11072856154608557
+      }
+    },
+    {
+      "round": 3,
+      "timestamp": "2026-06-21T12:40:30.384609",
+      "num_clients": 2,
+      "num_failures": 0,
+      "gas_eth": null,
+      "tx_hash": null,
+      "ipfs_cid": null,
+      "aggregate_time_s": 0.007467031478881836,
+      "train_time_round_s": 56.67828297615051,
+      "accuracy": 0.9777,
+      "client_metrics": [
+        {
+          "client_index": 1,
+          "num_examples": 30000,
+          "node_id": 1,
+          "train_samples": 30000,
+          "loss": 0.0784454685897039,
+          "train_time": 56.67828297615051,
+          "epochs": 1,
+          "batches": 938,
+          "accuracy": 0.9777666666666667,
+          "attack_type": "none",
+          "avg_loss": 0.0784454685897039,
+          "is_malicious": 0,
+          "aggregator": "fedavg"
+        },
+        {
+          "client_index": 2,
+          "num_examples": 30000,
+          "node_id": 0,
+          "train_samples": 30000,
+          "loss": 0.07708076571646422,
+          "train_time": 56.54089593887329,
+          "epochs": 1,
+          "batches": 938,
+          "accuracy": 0.9776333333333334,
+          "attack_type": "none",
+          "avg_loss": 0.07708076571646422,
+          "is_malicious": 0,
+          "aggregator": "fedavg"
+        }
+      ],
+      "aggregated_metrics": {
+        "accuracy": 0.9777,
+        "loss": 0.07776311715308405
+      }
+    }
+  ],
+  "total_gas_eth": 0.0,
+  "final_accuracy": 0.9777,
+  "accuracy_history": [
+    0.9215333333333333,
+    0.9680333333333333,
+    0.9777
+  ],
+  "experiment_end": "2026-06-21T12:40:30.404233"
+}

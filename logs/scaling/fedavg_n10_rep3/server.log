@@ -1,0 +1,80 @@
+[93mWARNING [0m:   DEPRECATED FEATURE: flwr.server.start_server() is deprecated.
+	Instead, use the `flower-superlink` CLI command to start a SuperLink as shown below:
+
+		$ flower-superlink --insecure
+
+	To view usage and all available options, run:
+
+		$ flower-superlink --help
+
+	Using `start_server()` is deprecated.
+
+            This is a deprecated feature. It will be removed
+            entirely in future versions of Flower.
+        
+[92mINFO [0m:      Starting Flower server, config: num_rounds=3, no round_timeout
+[92mINFO [0m:      Flower ECE: gRPC server running (3 rounds), SSL is disabled
+[92mINFO [0m:      [INIT]
+[92mINFO [0m:      Requesting initial parameters from one random client
+[92mINFO [0m:      Received initial parameters from one random client
+[92mINFO [0m:      Starting evaluation of initial global parameters
+[92mINFO [0m:      Evaluation returned no results (`None`)
+[92mINFO [0m:      
+[92mINFO [0m:      [ROUND 1]
+[92mINFO [0m:      configure_fit: strategy sampled 10 clients (out of 10)
+[92mINFO [0m:      aggregate_fit: received 10 results and 0 failures
+[92mINFO [0m:      configure_evaluate: no clients selected, skipping evaluation
+[92mINFO [0m:      
+[92mINFO [0m:      [ROUND 2]
+[92mINFO [0m:      configure_fit: strategy sampled 10 clients (out of 10)
+[92mINFO [0m:      aggregate_fit: received 10 results and 0 failures
+[92mINFO [0m:      configure_evaluate: no clients selected, skipping evaluation
+[92mINFO [0m:      
+[92mINFO [0m:      [ROUND 3]
+[92mINFO [0m:      configure_fit: strategy sampled 10 clients (out of 10)
+[92mINFO [0m:      aggregate_fit: received 10 results and 0 failures
+[92mINFO [0m:      configure_evaluate: no clients selected, skipping evaluation
+[92mINFO [0m:      
+[92mINFO [0m:      [SUMMARY]
+[92mINFO [0m:      Run finished 3 round(s) in 334.03s
+[92mINFO [0m:      	History (metrics, distributed, fit):
+[92mINFO [0m:      	{'accuracy': [(1, 0.8258166666666666),
+[92mINFO [0m:      	              (2, 0.9390166666666667),
+[92mINFO [0m:      	              (3, 0.9589666666666666)],
+[92mINFO [0m:      	 'loss': [(1, 0.5499414009894145),
+[92mINFO [0m:      	          (2, 0.20019665150506857),
+[92mINFO [0m:      	          (3, 0.1370136804531943)]}
+[92mINFO [0m:      
+
+======================================================================
+ FLOWER FEDERATED LEARNING SERVER — BASELINE (sem blockchain/IPFS)
+======================================================================
+ ROUNDS=3  MIN_CLIENTS=10  PORT=0.0.0.0:8081
+ AGGREGATOR=fedavg
+
+======================================================================
+ [BASELINE] ROUND 1/3
+======================================================================
+ [BASELINE] Round 1: train≈115.93s  agg=0.094s
+
+======================================================================
+ [BASELINE] ROUND 2/3
+======================================================================
+ [BASELINE] Round 2: train≈107.64s  agg=0.075s
+
+======================================================================
+ [BASELINE] ROUND 3/3
+======================================================================
+ [BASELINE] Round 3: train≈96.68s  agg=0.074s
+
+ Métricas baseline salvas em: results/scaling_mnist_rep3/fedavg_n10_rep3/baseline_metrics.json
+
+======================================================================
+ RESUMO BASELINE
+======================================================================
+  Round  1: accuracy=0.8258  train_time=115.93s
+  Round  2: accuracy=0.9390  train_time=107.64s
+  Round  3: accuracy=0.9590  train_time=96.68s
+
+ Tempo total do experimento: 340.25s
+ Acurácia final: 0.9590
