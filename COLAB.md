@@ -50,13 +50,28 @@ git clone -b claude/loving-hypatia-f54mj0 https://github.com/Luanmantegazine/cry
 cd cryptoFL
 pip install "flwr==1.7.0" "numpy<2.0"   # torch/torchvision com CUDA já no ambiente
 
-# CIFAR completo (agora viável na GPU)
+# CIFAR completo (agora viável na GPU). --min-fraction 0.8 = se um cliente cair,
+# a run segue com os demais em vez de travar esperando quórum.
 KMP_DUPLICATE_LIB_OK=TRUE python scaling_experiment.py \
     --clients-list 2,4,6,8,10 --rounds 3 \
     --aggregators fedavg,fedprox --repetitions 3 \
-    --dataset cifar10 --model resnet18 --alpha 0.5 \
+    --dataset cifar10 --model resnet18 --alpha 0.5 --min-fraction 0.8 \
     --output-dir results/scaling_cifar 2>&1 | tee logs/scaling_cifar.log
 ```
+
+## Se o sweep "roda em loop" e não plota
+
+Quase sempre é **branch ou ambiente errado**, não o experimento:
+
+- **Branch errado:** o clone PRECISA ser `-b claude/loving-hypatia-f54mj0`. O `main`
+  não tem o watchdog nem o `round_timeout` finito, então um cliente que não conecta
+  a tempo faz o servidor esperar quórum **para sempre** → a célula nunca termina e o
+  `scaling_summary.json`/PNGs (escritos só no fim) nunca aparecem. Confirme com
+  `!git log --oneline -1` logo após o clone.
+- **Não mexa no `protobuf`:** um aviso de conflito (`flwr 1.7.0 requires protobuf<5`)
+  é inofensivo; rodar `pip install -U protobuf` quebra o flwr.
+- **Recomeçar limpo:** *Runtime → Disconnect and delete runtime*, reabra pelo botão
+  *Open in Colab* (pega a versão correta do notebook) e rode tudo de novo.
 
 ## Observações
 
