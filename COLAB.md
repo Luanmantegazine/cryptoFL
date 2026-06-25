@@ -48,7 +48,8 @@ use a Opção B (montar o Google Drive e copiar `results/` para lá).
 ```bash
 git clone -b claude/loving-hypatia-f54mj0 https://github.com/Luanmantegazine/cryptoFL.git
 cd cryptoFL
-pip install "flwr==1.7.0" "numpy<2.0"   # torch/torchvision com CUDA já no ambiente
+pip install "flwr==1.7.0" "numpy<2.0"        # torch/torchvision com CUDA já no ambiente
+pip install -U "protobuf>=5.26,<6"           # grpcio do Colab exige protobuf 5.x (ver abaixo)
 
 # CIFAR completo (agora viável na GPU). --min-fraction 0.8 = se um cliente cair,
 # a run segue com os demais em vez de travar esperando quórum.
@@ -68,8 +69,11 @@ Quase sempre é **branch ou ambiente errado**, não o experimento:
   a tempo faz o servidor esperar quórum **para sempre** → a célula nunca termina e o
   `scaling_summary.json`/PNGs (escritos só no fim) nunca aparecem. Confirme com
   `!git log --oneline -1` logo após o clone.
-- **Não mexa no `protobuf`:** um aviso de conflito (`flwr 1.7.0 requires protobuf<5`)
-  é inofensivo; rodar `pip install -U protobuf` quebra o flwr.
+- **`protobuf` tem que ser 5.x no Colab:** o grpcio do Colab (>=1.71) exige
+  `protobuf>=5.26`. O flwr fixa `<5` e o pip rebaixa pra 4.x ao instalar — aí os
+  clientes **morrem no startup** (`[WARN] clients died right after spawn`). Conserto:
+  `pip install -U "protobuf>=5.26,<6"`. O aviso `flwr requires protobuf<5` é inofensivo
+  (o pipeline roda com 5.x).
 - **Recomeçar limpo:** *Runtime → Disconnect and delete runtime*, reabra pelo botão
   *Open in Colab* (pega a versão correta do notebook) e rode tudo de novo.
 
