@@ -48,7 +48,7 @@ use a Opção B (montar o Google Drive e copiar `results/` para lá).
 ```bash
 git clone -b claude/loving-hypatia-f54mj0 https://github.com/Luanmantegazine/cryptoFL.git
 cd cryptoFL
-pip install "flwr==1.7.0" "numpy<2.0"        # torch/torchvision com CUDA já no ambiente
+pip install "flwr==1.7.0"                    # NÃO force numpy<2 no Colab (torchvision é numpy 2.x)
 pip install -U "protobuf>=5.26,<6"           # grpcio do Colab exige protobuf 5.x (ver abaixo)
 
 # CIFAR completo (agora viável na GPU). --min-fraction 0.8 = se um cliente cair,
@@ -74,6 +74,10 @@ Quase sempre é **branch ou ambiente errado**, não o experimento:
   clientes **morrem no startup** (`[WARN] clients died right after spawn`). Conserto:
   `pip install -U "protobuf>=5.26,<6"`. O aviso `flwr requires protobuf<5` é inofensivo
   (o pipeline roda com 5.x).
+- **NÃO fixe `numpy<2` no Colab:** o torch/torchvision do Colab são compilados para
+  numpy 2.x; rebaixar dá `ValueError: numpy.dtype size changed ... Expected 96 ... got 88`
+  ao `import torchvision`. Deixe o numpy 2.x do Colab (o flwr roda com ele). Se já
+  rebaixou: `pip install -U "numpy>=2.0"` e **Runtime → Restart session**.
 - **Recomeçar limpo:** *Runtime → Disconnect and delete runtime*, reabra pelo botão
   *Open in Colab* (pega a versão correta do notebook) e rode tudo de novo.
 
