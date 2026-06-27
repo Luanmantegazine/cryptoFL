@@ -2,6 +2,18 @@
 
 [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/Luanmantegazine/cryptoFL/blob/claude/loving-hypatia-f54mj0/colab_gpu.ipynb)
 
+## Rodar TODOS os testes de uma vez
+
+Para executar **todos os experimentos** (scaling + ablation + security) de novo e,
+no final, plotar os gráficos com **legendas em inglês**, use o notebook
+[`colab_todos.ipynb`](colab_todos.ipynb):
+
+[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/Luanmantegazine/cryptoFL/blob/claude/todos-script-colab-t0xh5z/colab_todos.ipynb)
+
+As figuras finais (em inglês) são salvas em `results/figures_en/` e exibidas inline.
+
+---
+
 O `scaling_experiment.py` detecta CUDA automaticamente (`flower_fl/client.py` →
 `torch.device("cuda" if torch.cuda.is_available() else "cpu")`). Em GPU, o
 CIFAR-10/ResNet-18 sai de **~30 min/round (CPU) para segundos**, e as quedas que
