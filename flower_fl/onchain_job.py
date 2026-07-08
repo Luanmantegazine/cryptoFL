@@ -52,16 +52,23 @@ def _send(fn, value_wei: int = 0) -> Dict[str, Any]:
     return {"hash": txh.hex(), "gasUsed": rc.gasUsed, "gasETH": rc.gasUsed * rc.effectiveGasPrice / 1e18}
 
 
-def job_update_global(job_addr: str, cid: str, encrypted: bytes = b""):
+def job_update_global(job_addr: str, cid: str, encrypted: bytes | None = None):
+    # Armazenamento continua barato: latestModelHash = keccak(cid) (32 bytes,
+    # tamper-evidence). O ponteiro recuperável (CID no full / sha256:... no
+    # no_ipfs) viaja no log do evento GlobalModelUpdated via `encryptedCid`.
     job = _job(job_addr)
     cid_hash = keccak(text=cid)
-    return _send(job.functions.publishGlobalModel(cid_hash, encrypted))
+    payload = encrypted if encrypted is not None else cid.encode("utf-8")
+    return _send(job.functions.publishGlobalModel(cid_hash, payload))
 
 
-def job_send_update(job_addr: str, cid: str, encrypted: bytes = b""):
+def job_send_update(job_addr: str, cid: str, encrypted: bytes | None = None):
+    # Idem publishGlobalModel: o ponteiro recuperável vai no evento
+    # ClientUpdateRecorded (`encryptedCid`); o storage guarda só keccak(cid).
     job = _job(job_addr)
     cid_hash = keccak(text=cid)
-    return _send(job.functions.recordClientUpdate(cid_hash, encrypted))
+    payload = encrypted if encrypted is not None else cid.encode("utf-8")
+    return _send(job.functions.recordClientUpdate(cid_hash, payload))
 
 
 def get_gas_price_gwei() -> float:

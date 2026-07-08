@@ -41,6 +41,26 @@ def ipfs_add_numpy(arrays: List[np.ndarray], filename="weights.npz") -> str:
         return _local_add(tmp.name)
 
 
+def content_hash_numpy(arrays: List[np.ndarray]) -> str:
+    """Hash de conteúdo determinístico dos pesos serializados (sem IPFS).
+
+    Usado no modo `no_ipfs` da ablação: os pesos trafegam pelo protocolo
+    Flower (não pelo IPFS), mas ainda precisamos de uma referência de
+    conteúdo estável para ancorar on-chain. Retorna ``"sha256:<hex>"``.
+
+    Não usa ``np.savez`` (cujos metadados de zip não são determinísticos);
+    faz o hash de dtype+shape+bytes contíguos de cada array, na ordem.
+    """
+    import hashlib
+    h = hashlib.sha256()
+    for arr in arrays:
+        a = np.ascontiguousarray(arr)
+        h.update(str(a.dtype).encode())
+        h.update(str(a.shape).encode())
+        h.update(a.tobytes())
+    return "sha256:" + h.hexdigest()
+
+
 def _download_from_gateway(cid: str) -> bytes:
     gateways = IPFS_GATEWAYS or [PINATA_GATEWAY]
     for gateway in gateways:

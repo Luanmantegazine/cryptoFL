@@ -1,5 +1,7 @@
 import sys
 import os
+import json
+from pathlib import Path
 from dotenv import find_dotenv, set_key
 from eth_account import Account
 
@@ -63,6 +65,17 @@ def parse_logs_for_job_address(logs):
 def run_all_phases():
     print(f"--- FASE 2: Iniciando criação do Job ---")
 
+    gas_ops = []
+
+    def _record(operation, role, receipt):
+        gas_ops.append({
+            "operation": operation,
+            "role": role,
+            "gas_used": int(receipt["gasUsed"]),
+            "gas_eth": float(receipt["gasETH"]),
+            "tx_hash": receipt["hash"],
+        })
+
     # --- Parte 1: Registro do Requisitante ---
     if not switch_env_user(KEY_REQUESTER): return
     print(f"\n--- Parte 1: Ações do Requisitante ({acct.address}) ---")
@@ -72,6 +85,7 @@ def run_all_phases():
         print(f"   -> Requisitante já registrado. Contrato: {requester_contract}")
     else:
         r_requester = register_requester()
+        _record("registerRequester", "requester", r_requester)
         print(f"   -> Tx: {r_requester['hash']}")
 
     # --- Parte 2: Registro do Treinador ---
@@ -84,6 +98,7 @@ def run_all_phases():
         print(f"   -> Treinador já registrado. Contrato: {trainer_contract}")
     else:
         r_trainer = register_trainer("Treinador de IA", spec)
+        _record("registerTrainer", "trainer", r_trainer)
         print(f"   -> Tx: {r_trainer['hash']}")
 
     # --- Parte 3: Oferta do Requisitante ---
@@ -98,6 +113,7 @@ def run_all_phases():
         trainer_addr=ADDR_TRAINER,
         server_endpoint="0.0.0.0:8080"
     )
+    _record("MakeOffer", "requester", r_offer)
     print(f"   -> Tx: {r_offer['hash']}")
 
     offer_id = extract_offer_id_from_logs(r_offer["logs"])
@@ -113,6 +129,7 @@ def run_all_phases():
     print(f"\n--- Parte 4: Ações do Treinador ({acct.address}) ---")
     print(f"5. Aceitando oferta {offer_id}...")
     r_accept = accept_offer(int(offer_id))
+    _record("AcceptOffer", "trainer", r_accept)
     print(f"   -> Tx: {r_accept['hash']}")
 
     job_address = parse_logs_for_job_address(r_accept['logs'])
@@ -125,18 +142,32 @@ def run_all_phases():
     print(f"\n--- Parte 5: Financiamento do Job ({acct.address}) ---")
     print(f"6. Assinando e depositando {w3.from_wei(JOB_VALUE_WEI, 'ether')} ETH no Job...")
     r_sign_requester = sign_job_contract(job_address, total_amount_wei=JOB_VALUE_WEI)
+    _record("signJobContract+fund", "requester", r_sign_requester)
     print(f"   -> Tx: {r_sign_requester['hash']}")
 
     if not switch_env_user(KEY_TRAINER): return
     print(f"\n--- Parte 6: Assinatura final do Job ({acct.address}) ---")
     print(f"7. Treinador assinando o Job...")
     r_sign_trainer = sign_job_contract(job_address, total_amount_wei=0)
+    _record("signJobContract", "trainer", r_sign_trainer)
     print(f"   -> Tx: {r_sign_trainer['hash']}")
 
     print("\n***********************************************")
     print(">>> FASE 2 COMPLETA! JOB CRIADO E FINANCIADO! <<<")
     print(f"O endereço do JobContract é: {job_address}")
     print("***********************************************")
+
+    if gas_ops:
+        out = Path(os.getenv("MARKETPLACE_GAS_FILE", "results/marketplace_gas_breakdown.json"))
+        out.parent.mkdir(parents=True, exist_ok=True)
+        payload = {
+            "job_address": job_address,
+            "operations": gas_ops,
+            "total_gas_used": sum(o["gas_used"] for o in gas_ops),
+            "total_gas_eth": sum(o["gas_eth"] for o in gas_ops),
+        }
+        out.write_text(json.dumps(payload, indent=2))
+        print(f"\n Gas breakdown do marketplace salvo em: {out}")
 
     env_file = find_dotenv()
     set_key(env_file, "JOB_ADDRS", job_address)

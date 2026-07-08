@@ -4,20 +4,24 @@ import random
 import torch
 import torch.nn as nn
 import time
+import numpy as np
 
 from .models import get_model
 from .datasets import load_mnist, load_dataset
-from .ipfs import ipfs_get_numpy, ipfs_add_numpy
+from .ipfs import ipfs_get_numpy, ipfs_add_numpy, content_hash_numpy
+from .utils import USE_IPFS, USE_ONCHAIN
 # NOTE: `.onchain_job` (web3 + asserts on RPC_URL/PRIVATE_KEY/JOB_ABI_PATH) is
-# imported lazily inside fit() so that SKIP_IPFS / no_ipfs / baseline clients
-# run without an RPC endpoint or a deployed contract.
-
-SKIP_IPFS = os.getenv("SKIP_IPFS", "false").lower() == "true"
+# imported lazily inside fit() so that baseline / no_ipfs clients that do not
+# anchor on-chain run without an RPC endpoint or a deployed contract.
+#
+# USE_IPFS / USE_ONCHAIN são INDEPENDENTES (ver ablação): `no_ipfs` usa
+# USE_IPFS=false + USE_ONCHAIN=true — os pesos vão pelo protocolo Flower e um
+# hash de conteúdo do update é ancorado on-chain.
 
 JOB_ADDR = os.getenv("JOB_ADDR")
-# Só o fluxo `full` (com on-chain) exige JOB_ADDR.
-if not SKIP_IPFS:
-    assert JOB_ADDR, "JOB_ADDR não encontrado no .env (ou rode com SKIP_IPFS=true)"
+# A ancoragem on-chain (modos no_ipfs/full) exige um JobContract deployado.
+if USE_ONCHAIN:
+    assert JOB_ADDR, "JOB_ADDR não encontrado no .env (necessário para USE_ONCHAIN=true)"
 
 DATASET_NAME = os.getenv("DATASET", "mnist")
 MODEL_NAME = os.getenv("MODEL", "mnistnet")
@@ -26,9 +30,10 @@ ALPHA = float(os.getenv("DIRICHLET_ALPHA", "0.5"))
 MALICIOUS = os.getenv("MALICIOUS", "false").lower() == "true"
 ATTACK_TYPE = os.getenv("ATTACK_TYPE", "label_flip")  # "label_flip" | "noise" | "zero"
 ATTACK_PROB = float(os.getenv("ATTACK_PROB", "1.0"))
+SCALE_GAMMA = float(os.getenv("SCALE_GAMMA", "5.0"))
 
 _NUM_CLASSES_BY_DATASET = {"mnist": 10, "cifar10": 10}
-_VALID_ATTACKS = {"label_flip", "noise", "zero"}
+_VALID_ATTACKS = {"label_flip", "noise", "zero", "scaling"}
 
 
 class MNISTClient(fl.client.NumPyClient):
@@ -71,6 +76,9 @@ class MNISTClient(fl.client.NumPyClient):
             return torch.randn_like(images), labels
         if ATTACK_TYPE == "zero":
             return torch.zeros_like(images), labels
+        if ATTACK_TYPE == "scaling":
+            # Scaling attack atua no update final do modelo, nao nos batches.
+            return images, labels
 
         if ATTACK_TYPE not in _VALID_ATTACKS:
             print(f"[Cliente {self.node_id}] ⚠ ATTACK_TYPE desconhecido: '{ATTACK_TYPE}' — ignorando ataque")
@@ -78,8 +86,8 @@ class MNISTClient(fl.client.NumPyClient):
 
     def get_parameters(self, config):
         if "cid_global" in config:
-            if SKIP_IPFS:
-                print(f"[Cliente {self.node_id}] SKIP_IPFS: usando params do Flower")
+            if not USE_IPFS:
+                print(f"[Cliente {self.node_id}] Sem IPFS: usando params do Flower")
             else:
                 cid = config["cid_global"]
                 print(f"[Cliente {self.node_id}] Baixando modelo global: {cid}")
@@ -93,7 +101,16 @@ class MNISTClient(fl.client.NumPyClient):
         self.model.load_state_dict(state_dict, strict=True)
 
     def fit(self, parameters, config):
-        self.set_parameters(parameters)
+        initial_global_params = [np.array(p, copy=True) for p in parameters]
+        # Tempo de download/sincronização do modelo global para o cliente.
+        _download_t0 = time.time()
+        if USE_IPFS and "cid_global" in config:
+            cid = config["cid_global"]
+            global_params = ipfs_get_numpy(cid)
+            self.set_parameters(global_params)
+        else:
+            self.set_parameters(parameters)
+        download_time_s = time.time() - _download_t0
 
         optimizer = torch.optim.Adam(self.model.parameters())
         criterion = nn.NLLLoss()
@@ -134,24 +151,56 @@ class MNISTClient(fl.client.NumPyClient):
         )
 
         updated_params = [val.cpu().numpy() for _, val in self.model.state_dict().items()]
+
+        if MALICIOUS and ATTACK_TYPE == "scaling":
+            if random.random() <= ATTACK_PROB:
+                scaled_params = []
+                for w_global, w_local in zip(initial_global_params, updated_params):
+                    delta = w_local - w_global
+                    scaled_params.append(w_global + SCALE_GAMMA * delta)
+                updated_params = scaled_params
+                print(
+                    f"[Cliente {self.node_id}] Scaling attack aplicado "
+                    f"(gamma={SCALE_GAMMA:.3f})"
+                )
+            else:
+                print(
+                    f"[Cliente {self.node_id}] Scaling attack NAO aplicado "
+                    f"(prob={ATTACK_PROB})"
+                )
         cid_up = None
         tx_hash = None
+        upload_ipfs_time_s = 0.0
+        blockchain_tx_time_s = 0.0
 
-        if SKIP_IPFS:
-            print(f"[Cliente {self.node_id}] SKIP_IPFS: update não publicado no IPFS nem on-chain")
-        else:
+        # Camada de ARMAZENAMENTO (IPFS) — opcional (USE_IPFS). Sem IPFS, usa um
+        # hash de conteúdo determinístico do update como referência on-chain.
+        content_ref = None
+        if USE_IPFS:
+            _upload_t0 = time.time()
             cid_up = ipfs_add_numpy(
                 updated_params,
                 f"update_client{self.node_id}_r{server_round}.npz",
             )
-            print(f"[Cliente {self.node_id}] Publicando update: {cid_up}")
+            upload_ipfs_time_s = time.time() - _upload_t0
+            content_ref = cid_up
+            print(f"[Cliente {self.node_id}] Publicando update no IPFS: {cid_up}")
+        elif USE_ONCHAIN:
+            content_ref = content_hash_numpy(updated_params)
+
+        # Camada de ANCORAGEM (on-chain) — opcional (USE_ONCHAIN).
+        if USE_ONCHAIN:
             try:
-                from .onchain_job import job_send_update  # import tardio (só `full`)
-                r = job_send_update(JOB_ADDR, cid_up)
+                from .onchain_job import job_send_update  # import tardio
+                _tx_t0 = time.time()
+                r = job_send_update(JOB_ADDR, content_ref)
+                blockchain_tx_time_s = time.time() - _tx_t0
                 tx_hash = r.get("hash")
-                print(f"[Cliente {self.node_id}] Tx enviada: {tx_hash}")
+                print(f"[Cliente {self.node_id}] Update ancorado on-chain: tx={tx_hash}")
             except Exception as e:
                 print(f"[Cliente {self.node_id}] ERRO na blockchain: {e}")
+        else:
+            print(f"[Cliente {self.node_id}] Sem on-chain: update via protocolo Flower")
 
         # Monta dicionário de métricas somente com tipos válidos
         metrics = {
@@ -160,6 +209,12 @@ class MNISTClient(fl.client.NumPyClient):
             "loss": float(avg_loss),
             "accuracy": float(train_accuracy),
             "train_time": float(train_time),
+            "download_time_s": float(download_time_s),
+            "upload_ipfs_time_s": float(upload_ipfs_time_s),
+            "blockchain_tx_time_s": float(blockchain_tx_time_s),
+            "round_total_client_time_s": float(
+                download_time_s + train_time + upload_ipfs_time_s + blockchain_tx_time_s
+            ),
             "train_samples": int(total_samples),
             "epochs": int(epochs),
             "node_id": int(self.node_id),
@@ -201,6 +256,14 @@ class MNISTClient(fl.client.NumPyClient):
 if __name__ == "__main__":
     NODE_ID = int(os.getenv("NODE_ID", "0"))
     NUM_NODES = int(os.getenv("NUM_NODES", "3"))
+
+    _seed = os.getenv("SEED")
+    if _seed is not None:
+        try:
+            from .utils import set_seed
+            set_seed(int(_seed))
+        except ValueError:
+            pass
 
     print(f"\n{'=' * 70}")
     print(f" CLIENTE {NODE_ID}/{NUM_NODES - 1}")
